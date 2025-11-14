@@ -10,13 +10,15 @@ export type { Series, Character, CharacterVariant };
 export type ViewType = 'front' | 'side' | 'action' | 'detail';
 
 export interface LocalVariantImage {
+  id?: number;       // Existing image ID
   file?: File;       // New file to upload
-  url?: string;      // Preview URL
+  url?: string;      // Preview URL for existing or new
   view_type: ViewType;
-  is_new?: boolean;
+  is_new?: boolean;  // Flag for new uploads
 }
 
 export interface LocalVariantForm {
+  id?: number;       // Existing variant ID
   name: string;
   visual_description: string; // Maps to 'description' in backend
   images: LocalVariantImage[];

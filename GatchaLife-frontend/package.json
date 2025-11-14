@@ -33,6 +33,7 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.17",
+    "@testing-library/vue": "^8.1.0",
     "@tsconfig/node22": "^22.0.2",
     "@types/jsdom": "^27.0.0",
     "@types/node": "^22.19.1",

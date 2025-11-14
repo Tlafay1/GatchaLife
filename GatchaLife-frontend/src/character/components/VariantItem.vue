@@ -105,6 +105,7 @@ import type { LocalVariantForm, LocalVariantImage, ViewType } from '@/types/gach
 
 const props = defineProps<{
   modelValue: LocalVariantForm
+  onScheduleImageForDeletion: (id: number) => void
 }>()
 
 const emit = defineEmits<{
@@ -147,6 +148,10 @@ const handleFiles = (e: Event) => {
 }
 
 const removeImage = (index: number) => {
+  const image = props.modelValue.images[index]
+  if (image.id) {
+    props.onScheduleImageForDeletion(image.id)
+  }
   const updatedImages = [...props.modelValue.images]
   updatedImages.splice(index, 1)
   emit('update:modelValue', { ...props.modelValue, images: updatedImages })
