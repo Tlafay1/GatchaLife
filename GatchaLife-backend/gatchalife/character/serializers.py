@@ -13,7 +13,7 @@ class CharacterVariantSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CharacterVariant
-        fields = ["id", "name", "description", "images"]
+        fields = ["id", "name", "description", "images", "character"]
 
 
 class CharacterSerializer(serializers.ModelSerializer):
@@ -22,7 +22,7 @@ class CharacterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Character
-        fields = ["id", "name", "description", "images", "variants"]
+        fields = ["id", "name", "description", "images", "variants", "series"]
         
 class SeriesSerializer(serializers.ModelSerializer):
     class Meta:
