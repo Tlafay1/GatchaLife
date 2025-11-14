@@ -10,5 +10,6 @@ export type Character = {
     description?: string;
     readonly images?: Array<VariantReferenceImage>;
     readonly variants?: Array<CharacterVariant>;
+    series: number;
 };
 

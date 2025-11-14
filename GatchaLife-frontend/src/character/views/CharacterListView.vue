@@ -14,7 +14,7 @@
       </div>
     </div>
 
-    <div v-if="isLoading" class="text-center text-muted-foreground">Loading characters...</div>
+    <div v-if="isCharactersLoading" class="text-center text-muted-foreground">Loading characters...</div>
 
     <div v-else-if="charactersBySeries.length === 0" class="text-center py-12 border-2 border-dashed rounded-lg">
       <p class="text-muted-foreground mb-2">No characters found.</p>
@@ -51,10 +51,11 @@ import { computed } from 'vue'
 import { Plus } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card'
-import { useCharactersList } from '@/lib/api-client'
+import { useCharactersList, useSeriesList } from '@/lib/api-client'
 import type { Character, Series } from '@/api'
 
-const { data: characters, isLoading } = useCharactersList()
+const { data: characters, isLoading: isCharactersLoading } = useCharactersList()
+const { data: series, isLoading: isSeriesLoading } = useSeriesList()
 
 interface SeriesGroup {
   series: Series;
@@ -68,10 +69,10 @@ const charactersBySeries = computed<SeriesGroup[]>(() => {
 
   characters.value.forEach(char => {
     if (!char.series) return;
-    const seriesId = (char.series as Series).id!
+    const seriesId = char.series
     if (!groups[seriesId]) {
       groups[seriesId] = {
-        series: char.series as Series,
+        series: series.value?.find(s => s.id === seriesId)!,
         characters: []
       }
     }
