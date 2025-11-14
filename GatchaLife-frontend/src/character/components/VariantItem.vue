@@ -73,18 +73,6 @@
                   <X class="w-3 h-3" />
                 </Button>
               </div>
-
-              <select
-                :value="imgObj.view_type"
-                @change="(e) => updateViewType(idx, (e.target as HTMLSelectElement).value as ViewType)"
-                class="w-full text-[10px] h-6 rounded bg-background/90 border-none px-1 focus:ring-1 focus:ring-primary text-foreground"
-                @click.stop
-              >
-                <option value="front">Front</option>
-                <option value="side">Side</option>
-                <option value="action">Action</option>
-                <option value="detail">Detail</option>
-              </select>
             </div>
           </div>
         </div>
@@ -101,7 +89,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import type { LocalVariantForm, LocalVariantImage, ViewType } from '@/types/gacha'
+import type { LocalVariantForm, LocalVariantImage } from '@/types/gacha'
 
 const props = defineProps<{
   modelValue: LocalVariantForm
@@ -118,12 +106,6 @@ const updateField = (field: keyof LocalVariantForm, value: string) => {
     ...props.modelValue,
     [field]: value
   })
-}
-
-const updateViewType = (idx: number, type: ViewType) => {
-  const newImages = [...props.modelValue.images]
-  newImages[idx] = { ...newImages[idx], view_type: type }
-  emit('update:modelValue', { ...props.modelValue, images: newImages })
 }
 
 const getPreview = (imgObj: LocalVariantImage) => {

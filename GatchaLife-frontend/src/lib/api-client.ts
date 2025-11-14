@@ -20,16 +20,6 @@ export const useCreateSeries = () => {
   });
 };
 
-export const useDeleteCharacter = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: number) => CharactersService.charactersDestroy(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['characters'] });
-    },
-  });
-};
-
 export const useUpdateSeries = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -44,7 +34,7 @@ export const useUpdateSeries = () => {
 export const useDeleteSeries = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => SeriesService.seriesDestroy(id),
+    mutationFn: (id: number) => SeriesService.seriesDelete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['series'] });
     },
@@ -54,12 +44,12 @@ export const useDeleteSeries = () => {
 // --- Characters ---
 export const useCharactersList = () => useQuery({
   queryKey: ['characters'],
-  queryFn: CharactersService.charactersList,
+  queryFn: () => CharactersService.charactersList(),
 });
 
 export const useCharacterDetails = (id: number) => useQuery({
   queryKey: ['character', id],
-  queryFn: () => CharactersService.charactersRetrieve(id),
+  queryFn: () => CharactersService.charactersRead(id),
   enabled: !!id,
 });
 
@@ -110,7 +100,7 @@ export const useUpdateVariant = () => {
 export const useDeleteVariant = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id }: { id: number, characterId: number }) => VariantsService.variantsDestroy(id),
+    mutationFn: ({ id }: { id: number, characterId: number }) => VariantsService.variantsDelete(id),
     onSuccess: (data, { characterId }) => {
       queryClient.invalidateQueries({ queryKey: ['character', characterId] });
     },
@@ -147,7 +137,7 @@ export const useUploadVariantImage = () => {
 export const useDeleteVariantImage = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => VariantImagesService.variantImagesDestroy(id),
+    mutationFn: (id: number) => VariantImagesService.variantImagesDelete(id),
     onSuccess: () => {
       // Invalidation will be handled by the calling component
     },

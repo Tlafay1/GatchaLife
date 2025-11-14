@@ -14,7 +14,7 @@
       </div>
     </div>
 
-    <div v-if="isLoading" class="text-center text-muted-foreground">Loading characters...</div>
+    <div v-if="isCharactersLoading" class="text-center text-muted-foreground">Loading characters...</div>
 
     <div v-else-if="charactersBySeries.length === 0" class="text-center py-12 border-2 border-dashed rounded-lg">
       <p class="text-muted-foreground mb-2">No characters found.</p>
@@ -34,13 +34,10 @@
             <CardContent>
               <p class="text-sm text-muted-foreground truncate">{{ char.description || 'No description' }}</p>
             </CardContent>
-            <CardFooter class="flex gap-2">
+            <CardFooter>
               <router-link :to="`/character/${char.id}/edit`" class="w-full">
                 <Button variant="outline" class="w-full">Edit</Button>
               </router-link>
-              <Button variant="ghost" size="icon" class="text-destructive hover:text-destructive" @click="handleDelete(char.id!)">
-                <Trash2 class="w-4 h-4" />
-              </Button>
             </CardFooter>
           </Card>
         </div>
@@ -51,20 +48,14 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Plus, Trash2 } from 'lucide-vue-next'
+import { Plus } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card'
-import { useCharactersList, useDeleteCharacter } from '@/lib/api-client'
+import { useCharactersList, useSeriesList } from '@/lib/api-client'
 import type { Character, Series } from '@/api'
 
-const { data: characters, isLoading } = useCharactersList()
-const { mutate: deleteCharacter } = useDeleteCharacter()
-
-const handleDelete = (id: number) => {
-  if (confirm('Are you sure you want to delete this character?')) {
-    deleteCharacter(id)
-  }
-}
+const { data: characters, isLoading: isCharactersLoading } = useCharactersList()
+const { data: series, isLoading: isSeriesLoading } = useSeriesList()
 
 interface SeriesGroup {
   series: Series;
@@ -78,10 +69,10 @@ const charactersBySeries = computed<SeriesGroup[]>(() => {
 
   characters.value.forEach(char => {
     if (!char.series) return;
-    const seriesId = (char.series as Series).id!
+    const seriesId = char.series
     if (!groups[seriesId]) {
       groups[seriesId] = {
-        series: char.series as Series,
+        series: series.value?.find(s => s.id === seriesId)!,
         characters: []
       }
     }
