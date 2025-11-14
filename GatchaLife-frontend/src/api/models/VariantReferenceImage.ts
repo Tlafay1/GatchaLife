@@ -5,6 +5,5 @@
 export type VariantReferenceImage = {
     readonly id?: number;
     readonly image?: string;
-    variant: number;
 };
 

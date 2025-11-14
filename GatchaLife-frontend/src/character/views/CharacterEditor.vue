@@ -168,9 +168,10 @@ watch(characterData, (newChar) => {
       id: v.id,
       name: v.name || '',
       visual_description: v.description || '',
-      images: (v.images || []).map(img => ({
+      images: (v.reference_images || []).map(img => ({
         id: img.id,
         url: img.image,
+        view_type: img.view_type as ViewType,
       }))
     }))
   }

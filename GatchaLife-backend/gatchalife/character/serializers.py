@@ -5,7 +5,7 @@ from rest_framework import serializers
 class VariantReferenceImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = VariantReferenceImage
-        fields = ["id", "image", "variant"]
+        fields = ["id", "image"]
 
 
 class CharacterVariantSerializer(serializers.ModelSerializer):
@@ -13,7 +13,7 @@ class CharacterVariantSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CharacterVariant
-        fields = ["id", "name", "description", "images", "character"]
+        fields = ["id", "name", "description", "images"]
 
 
 class CharacterSerializer(serializers.ModelSerializer):
@@ -22,7 +22,7 @@ class CharacterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Character
-        fields = ["id", "name", "description", "images", "variants", "series"]
+        fields = ["id", "name", "description", "images", "variants"]
         
 class SeriesSerializer(serializers.ModelSerializer):
     class Meta:
