@@ -263,7 +263,7 @@ const onSubmit = async () => {
     // Step 2: Process Deletions
     console.log("Step 2: Processing Deletions")
     await Promise.all([
-      ...variantsToDelete.value.map(id => deleteVariant(id)),
+      ...variantsToDelete.value.map(id => deleteVariant({ id, characterId: charId })),
       ...imagesToDelete.value.map(id => deleteImage(id))
     ])
 

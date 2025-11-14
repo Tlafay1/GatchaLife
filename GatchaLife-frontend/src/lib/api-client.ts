@@ -100,9 +100,9 @@ export const useUpdateVariant = () => {
 export const useDeleteVariant = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => VariantsService.variantsDestroy(id),
-    onSuccess: (data, variables) => {
-      // Need to find a way to invalidate the correct character query
+    mutationFn: ({ id }: { id: number, characterId: number }) => VariantsService.variantsDestroy(id),
+    onSuccess: (data, { characterId }) => {
+      queryClient.invalidateQueries({ queryKey: ['character', characterId] });
     },
   });
 };
@@ -111,12 +111,22 @@ export const useDeleteVariant = () => {
 export const useUploadVariantImage = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: { variantId: number; file: File; viewType: string }) => {
+    mutationFn: async (data: { variantId: number; file: File; viewType: string }) => {
       const formData = new FormData();
       formData.append('variant', String(data.variantId));
       formData.append('image', data.file);
       formData.append('view_type', data.viewType);
-      return VariantImagesService.variantImagesCreate({ ...data, variant: data.variantId, image: data.file });
+
+      const response = await fetch(`${OpenAPI.BASE}/variant-images/`, {
+        method: 'POST',
+        body: formData,
+        // Let the browser set the Content-Type header
+      });
+
+      if (!response.ok) {
+        throw new Error('Image upload failed');
+      }
+      return response.json();
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['character', data.variant] });

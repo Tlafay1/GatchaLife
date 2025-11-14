@@ -2,11 +2,16 @@
   <div class="max-w-2xl mx-auto p-6">
     <div class="flex items-center justify-between mb-6">
       <h1 class="text-3xl font-bold">All Series</h1>
-      <router-link to="/character/new">
-        <Button variant="outline">
-          <Plus class="w-4 h-4 mr-2" /> New Character
-        </Button>
-      </router-link>
+      <div class="flex gap-2">
+        <router-link to="/">
+          <Button variant="outline">All Characters</Button>
+        </router-link>
+        <router-link to="/character/new">
+          <Button>
+            <Plus class="w-4 h-4 mr-2" /> New Character
+          </Button>
+        </router-link>
+      </div>
     </div>
 
     <div v-if="isLoading" class="text-center text-muted-foreground">Loading series...</div>
@@ -29,25 +34,9 @@
             <Button variant="ghost" size="icon" @click="openEditDialog(s)">
               <Pencil class="w-4 h-4" />
             </Button>
-            <AlertDialog>
-              <AlertDialogTrigger as-child>
-                <Button variant="ghost" size="icon" class="text-destructive hover:text-destructive">
-                  <Trash2 class="w-4 h-4" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will permanently delete the series "{{ s.name }}". This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction @click="handleDelete(s.id!)">Delete</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            <Button variant="ghost" size="icon" class="text-destructive hover:text-destructive" @click="handleDelete(s.id!)">
+              <Trash2 class="w-4 h-4" />
+            </Button>
           </div>
         </CardHeader>
       </Card>
@@ -85,7 +74,6 @@ import { Plus, Pencil, Trash2 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -115,6 +103,8 @@ const handleUpdate = () => {
 }
 
 const handleDelete = (id: number) => {
-  deleteSeries(id)
+  if (confirm('Are you sure you want to delete this series?')) {
+    deleteSeries(id)
+  }
 }
 </script>

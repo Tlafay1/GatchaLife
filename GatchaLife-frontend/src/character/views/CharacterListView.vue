@@ -2,11 +2,16 @@
   <div class="max-w-4xl mx-auto p-6">
     <div class="flex items-center justify-between mb-6">
       <h1 class="text-3xl font-bold">Character Dashboard</h1>
-      <router-link to="/character/new">
-        <Button>
-          <Plus class="w-4 h-4 mr-2" /> New Character
-        </Button>
-      </router-link>
+      <div class="flex gap-2">
+        <router-link to="/series">
+          <Button variant="outline">All Series</Button>
+        </router-link>
+        <router-link to="/character/new">
+          <Button>
+            <Plus class="w-4 h-4 mr-2" /> New Character
+          </Button>
+        </router-link>
+      </div>
     </div>
 
     <div v-if="isLoading" class="text-center text-muted-foreground">Loading characters...</div>
