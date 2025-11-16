@@ -23,7 +23,8 @@ class CharacterSerializer(serializers.ModelSerializer):
     class Meta:
         model = Character
         fields = ["id", "name", "description", "images", "variants", "series"]
-        
+
+
 class SeriesSerializer(serializers.ModelSerializer):
     class Meta:
         model = Series

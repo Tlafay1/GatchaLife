@@ -138,7 +138,7 @@ import {
   useCreateVariant, useUpdateVariant, useDeleteVariant,
   useUploadVariantImage, useDeleteVariantImage
 } from '@/lib/api-client'
-import type { CharacterFormState, LocalVariantForm, LocalVariantImage, ViewType } from '@/types/gacha'
+import type { CharacterFormState, LocalVariantForm, LocalVariantImage } from '@/types/gacha'
 
 const props = defineProps<{ id?: string }>()
 const router = useRouter()
@@ -218,7 +218,7 @@ const addVariant = () => {
 
 const removeVariant = (index: number) => {
   const variant = form.variants[index]
-  if (variant.id) {
+  if (variant?.id) {
     variantsToDelete.value.push(variant.id)
   }
   form.variants.splice(index, 1)
@@ -290,7 +290,6 @@ const onSubmit = async () => {
           return uploadImage({
             variantId: variantId,
             file: img.file,
-            viewType: img.view_type
           })
         }
       }))

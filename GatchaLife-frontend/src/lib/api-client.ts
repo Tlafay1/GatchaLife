@@ -20,6 +20,16 @@ export const useCreateSeries = () => {
   });
 };
 
+export const useDeleteCharacter = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => CharactersService.charactersDelete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['characters'] });
+    },
+  });
+};
+
 export const useUpdateSeries = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -111,11 +121,10 @@ export const useDeleteVariant = () => {
 export const useUploadVariantImage = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { variantId: number; file: File; viewType: string }) => {
+    mutationFn: async (data: { variantId: number; file: File; }) => {
       const formData = new FormData();
       formData.append('variant', String(data.variantId));
       formData.append('image', data.file);
-      formData.append('view_type', data.viewType);
 
       const response = await fetch(`${OpenAPI.BASE}/variant-images/`, {
         method: 'POST',

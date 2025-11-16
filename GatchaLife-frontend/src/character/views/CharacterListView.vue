@@ -34,10 +34,13 @@
             <CardContent>
               <p class="text-sm text-muted-foreground truncate">{{ char.description || 'No description' }}</p>
             </CardContent>
-            <CardFooter>
+            <CardFooter class="flex gap-2">
               <router-link :to="`/character/${char.id}/edit`" class="w-full">
                 <Button variant="outline" class="w-full">Edit</Button>
               </router-link>
+              <Button variant="ghost" size="icon" class="text-destructive hover:text-destructive" @click="handleDelete(char.id!)">
+                <Trash2 class="w-4 h-4" />
+              </Button>
             </CardFooter>
           </Card>
         </div>
@@ -48,14 +51,22 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Plus } from 'lucide-vue-next'
+import { Plus, Trash2 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card'
-import { useCharactersList, useSeriesList } from '@/lib/api-client'
+import { useCharactersList, useSeriesList, useDeleteCharacter } from '@/lib/api-client'
 import type { Character, Series } from '@/api'
 
 const { data: characters, isLoading: isCharactersLoading } = useCharactersList()
 const { data: series, isLoading: isSeriesLoading } = useSeriesList()
+
+const { mutate: deleteCharacter } = useDeleteCharacter()
+
+const handleDelete = (id: number) => {
+  if (confirm('Are you sure you want to delete this character?')) {
+    deleteCharacter(id)
+  }
+}
 
 interface SeriesGroup {
   series: Series;

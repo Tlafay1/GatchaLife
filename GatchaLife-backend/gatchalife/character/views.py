@@ -1,6 +1,5 @@
-from rest_framework import viewsets, status, filters
+from rest_framework import viewsets, filters
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
-from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 
 from .models import Series, Character, CharacterVariant, VariantReferenceImage
