@@ -1,0 +1,58 @@
+services:
+  db:
+    image: postgres:15
+    container_name: gatchalife-db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    env_file:
+      - .env
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gatchalife -d gatchalife"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./GatchaLife-backend
+      target: prod
+    container_name: gatchalife-backend
+    volumes:
+      - static_volume:/app/staticfiles
+      - media_volume:/app/static/images
+    env_file:
+      - .env
+    expose:
+      - "8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./GatchaLife-frontend
+      target: prod
+    container_name: gatchalife-frontend
+    expose:
+      - "80"
+    depends_on:
+      - backend
+
+  # nginx:
+  #   build: ./nginx
+  #   container_name: gatchalife-nginx
+  #   ports:
+  #     - "80:80"
+  #   volumes:
+  #     - static_volume:/app/staticfiles
+  #     - media_volume:/app/static/images
+  #   depends_on:
+  #     - backend
+  #     - frontend
+
+volumes:
+  postgres_data:
+  static_volume:
+  media_volume:
