@@ -8,5 +8,6 @@ export type CharacterVariant = {
     name: string;
     description?: string;
     readonly images?: Array<VariantReferenceImage>;
+    character: number;
 };
 

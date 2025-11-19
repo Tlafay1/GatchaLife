@@ -13,6 +13,10 @@ from gatchalife.character.views import (
     SeriesViewSet,
 )
 
+from gatchalife.generated_image.views import GeneratedImageViewSet
+
+from gatchalife.style.views import StyleViewSet, RarityViewSet, ThemeViewSet
+
 schema_view = get_schema_view(
     openapi.Info(
         title="Snippets API",
@@ -31,6 +35,10 @@ router.register(r'series', SeriesViewSet)             # /api/series/
 router.register(r'characters', CharacterViewSet)      # /api/characters/
 router.register(r'variants', CharacterVariantViewSet) # /api/variants/
 router.register(r'variant-images', VariantReferenceImageViewSet) # /api/variant-images/
+router.register(r'generated-images', GeneratedImageViewSet) # /api/generated-images/
+router.register(r'styles', StyleViewSet)               # /api/styles/
+router.register(r'rarities', RarityViewSet)           # /api/rarities/
+router.register(r'themes', ThemeViewSet)               # /api/themes/
 
 urlpatterns = [
     path("admin/", admin.site.urls),

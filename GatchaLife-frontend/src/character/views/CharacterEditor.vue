@@ -3,7 +3,7 @@
     
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-3xl font-bold tracking-tight">Character Forge</h1>
+        <h1 class="text-3xl font-bold tracking-tight">{{ isEditMode ? 'Edit Character' : 'Character Forge' }}</h1>
         <p class="text-muted-foreground">Define entities for AI generation rewards.</p>
       </div>
       <Button @click="onSubmit" :disabled="isSaving || isUploading">
@@ -105,9 +105,10 @@
 
       <VariantItem 
         v-for="(variant, index) in form.variants" 
-        :key="index"
+        :key="variant.id || `new-${index}`"
         v-model="form.variants[index]"
         @remove="removeVariant(index)"
+        :onScheduleImageForDeletion="scheduleImageForDeletion"
       />
     </div>
 
@@ -115,9 +116,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
+import { ref, reactive, computed, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { Plus, Save } from 'lucide-vue-next'
+import { useQueryClient } from '@tanstack/vue-query'
 
 // UI Components
 import { Button } from '@/components/ui/button'
@@ -127,15 +129,22 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-
 import VariantItem from '@/character/components/VariantItem.vue'
 
-// Types & API
-import type { CharacterFormState, ViewType } from '@/types/gacha'
-import { CharactersService, SeriesService, VariantsService } from '@/api'
-import type { Character, CharacterVariant, Series } from '@/api'
+// API and Types
+import {
+  useSeriesList, useCreateSeries, useCharacterDetails,
+  useCreateCharacter, useUpdateCharacter,
+  useCreateVariant, useUpdateVariant, useDeleteVariant,
+  useUploadVariantImage, useDeleteVariantImage
+} from '@/lib/api-client'
+import type { CharacterFormState, LocalVariantForm, LocalVariantImage } from '@/types/gacha'
 
+const props = defineProps<{ id?: string }>()
+const router = useRouter()
 const queryClient = useQueryClient()
+
+const isEditMode = computed(() => !!props.id)
 
 // --- FORM STATE ---
 const form = reactive<CharacterFormState>({
@@ -144,92 +153,83 @@ const form = reactive<CharacterFormState>({
   base_description: '',
   variants: []
 })
+const variantsToDelete = ref<number[]>([])
+const imagesToDelete = ref<number[]>([])
+
+// --- DATA FETCHING (for edit mode) ---
+const { data: characterData, isLoading: isLoadingCharacter } = useCharacterDetails(parseInt(props.id || ''))
+
+watch(characterData, (newChar) => {
+  if (newChar) {
+    form.name = newChar.name || ''
+    form.series = String(newChar.series as number)
+    form.base_description = newChar.description || ''
+    form.variants = (newChar.variants || []).map(v => ({
+      id: v.id,
+      name: v.name || '',
+      visual_description: v.description || '',
+      images: (v.images || []).map(img => ({
+        id: img.id,
+        url: img.image,
+      }))
+    }))
+  }
+}, { immediate: true })
 
 // --- SERIES LOGIC ---
-const { data: seriesList, isLoading: isLoadingSeries } = useQuery<Series[]>({
-  queryKey: ['series'],
-  queryFn: () => SeriesService.seriesList(),
-})
-
+const { data: seriesList, isLoading: isLoadingSeries } = useSeriesList()
+const { mutateAsync: createSeries, isPending: isCreatingSeries } = useCreateSeries()
 const isSeriesDialogOpen = ref(false)
 const newSeriesName = ref('')
 const newSeriesDescription = ref('')
 
-const { mutateAsync: createSeries, isPending: isCreatingSeries } = useMutation({
-  mutationFn: (data: { name: string, description: string }) => SeriesService.seriesCreate(data),
-  onSuccess: (newItem) => {
-    queryClient.invalidateQueries({ queryKey: ['series'] })
+const handleCreateSeries = async () => {
+  if (!newSeriesName.value) return
+  const newItem = await createSeries({ name: newSeriesName.value, description: newSeriesDescription.value })
+  if (newItem) {
     form.series = String(newItem.id)
     isSeriesDialogOpen.value = false
     newSeriesName.value = ''
     newSeriesDescription.value = ''
   }
-})
-
-const handleCreateSeries = async () => {
-  if (!newSeriesName.value) return
-  await createSeries({ name: newSeriesName.value, description: newSeriesDescription.value })
 }
 
-// --- MAIN LOGIC ---
+// --- MUTATIONS ---
+const { mutateAsync: createCharacter } = useCreateCharacter()
+const { mutateAsync: updateCharacter, isPending: isUpdatingChar } = useUpdateCharacter()
+const { mutateAsync: createVariant } = useCreateVariant()
+const { mutateAsync: updateVariant, isPending: isUpdatingVariant } = useUpdateVariant()
+const { mutateAsync: deleteVariant } = useDeleteVariant()
+const { mutateAsync: uploadImage, isPending: isUploading } = useUploadVariantImage()
+const { mutateAsync: deleteImage } = useDeleteVariantImage()
 
-// 1. Create Character
-const { mutateAsync: createCharacter, isPending: isSavingChar } = useMutation({
-  mutationFn: (data: { name: string, series: number, description: string }) => 
-    CharactersService.charactersCreate(data)
-})
-
-// 2. Create Variant
-const { mutateAsync: createVariant, isPending: isSavingVariant } = useMutation({
-  mutationFn: (data: { character: number, name: string, description: string }) => 
-    VariantsService.variantsCreate(data)
-})
-
-// 3. Upload Image (Manual Fetch)
-const { mutateAsync: uploadImage, isPending: isUploading } = useMutation({
-  mutationFn: async ({ variantId, file, viewType }: { variantId: number, file: File, viewType: ViewType }) => {
-    const formData = new FormData()
-    formData.append('variant', String(variantId))
-    formData.append('image', file)
-    
-    // Note: Your django model snippet removed 'view_type', but we send it in case 
-    // you add it back to models.py. Django will simply ignore it if not in the Form.
-    formData.append('view_type', viewType) 
-
-    // Adjust URL to your actual API endpoint
-    const response = await fetch('http://127.0.0.1:8000/variant-images/', {
-      method: 'POST',
-      body: formData,
-      // Do NOT set Content-Type header manually; fetch does it for FormData
-    })
-
-    if (!response.ok) {
-      throw new Error(`Upload failed: ${response.statusText}`)
-    }
-    return response.json()
-  }
-})
-
-const isSaving = computed(() => isSavingChar.value || isSavingVariant.value)
+const isSaving = computed(() => isUpdatingChar.value || isUpdatingVariant.value)
 const buttonLabel = computed(() => {
-  if (isSavingChar.value) return 'Forging Character...'
-  if (isSavingVariant.value) return 'Creating Variants...'
-  if (isUploading.value) return 'Uploading Reference Data...'
-  return 'Save Character'
+  if (isEditMode.value) {
+    return isSaving.value ? 'Saving...' : 'Save Changes'
+  }
+  return isSaving.value ? 'Forging...' : 'Save Character'
 })
 
+// --- FORM ACTIONS ---
 const addVariant = () => {
-  form.variants.push({
-    name: '',
-    visual_description: '', // Maps to description in DB
-    images: []
-  })
+  form.variants.push({ name: '', visual_description: '', images: [] })
 }
 
 const removeVariant = (index: number) => {
+  const variant = form.variants[index]
+  if (variant?.id) {
+    variantsToDelete.value.push(variant.id)
+  }
   form.variants.splice(index, 1)
 }
 
+// This function needs to be passed down to VariantItem component
+const scheduleImageForDeletion = (id: number) => {
+  imagesToDelete.value.push(id)
+}
+
+// --- SUBMISSION LOGIC ---
 const onSubmit = async () => {
   if (!form.series || !form.name) {
     alert("Name and Series are required.")
@@ -237,45 +237,72 @@ const onSubmit = async () => {
   }
 
   try {
-    // Step 1: Create Character
-    console.log("Step 1: Creating Character")
-    const charData: Character = await createCharacter({
-      name: form.name,
-      series: parseInt(form.series),
-      description: form.base_description
-    })
+    let charId: number
     
-    // Step 2: Loop Variants
-    console.log(`Step 2: Creating ${form.variants.length} variants for Char ID ${charData.id}`)
-    
+    // Step 1: Create or Update Character
+    if (isEditMode.value) {
+      console.log("Step 1: Updating Character")
+      const updated = await updateCharacter({
+        id: parseInt(props.id!),
+        name: form.name,
+        series: parseInt(form.series),
+        description: form.base_description
+      })
+      charId = updated.id!
+    } else {
+      console.log("Step 1: Creating Character")
+      const newChar = await createCharacter({
+        name: form.name,
+        series: parseInt(form.series),
+        description: form.base_description
+      })
+      charId = newChar.id!
+    }
+
+    // Step 2: Process Deletions
+    console.log("Step 2: Processing Deletions")
+    await Promise.all([
+      ...variantsToDelete.value.map(id => deleteVariant({ id, characterId: charId })),
+      ...imagesToDelete.value.map(id => deleteImage(id))
+    ])
+
+    // Step 3: Process Variants (Create/Update)
+    console.log("Step 3: Processing Variants")
     await Promise.all(form.variants.map(async (variant) => {
-      const varData: CharacterVariant = await createVariant({
-        character: charData.id!,
+      let variantId: number
+      const variantPayload = {
+        character: charId,
         name: variant.name,
         description: variant.visual_description
-      })
-      
-      // Step 3: Loop Images
-      if (variant.images.length > 0) {
-        console.log(`Step 3: Uploading ${variant.images.length} images for Variant ID ${varData.id}`)
-        await Promise.all(variant.images.map(img => {
-          if (img.file) {
-            return uploadImage({
-              variantId: varData.id!,
-              file: img.file,
-              viewType: img.view_type
-            })
-          }
-        }))
       }
+
+      if (variant.id) { // Update existing variant
+        const updatedVar = await updateVariant({ id: variant.id, ...variantPayload })
+        variantId = updatedVar.id!
+      } else { // Create new variant
+        const newVar = await createVariant(variantPayload)
+        variantId = newVar.id!
+      }
+
+      // Step 4: Process Images for this variant
+      await Promise.all(variant.images.map(img => {
+        if (img.file && img.is_new) {
+          return uploadImage({
+            variantId: variantId,
+            file: img.file,
+          })
+        }
+      }))
     }))
 
-    alert("Character Forged Successfully!")
-    // Reset form or redirect logic here
+    // Finalization
+    await queryClient.invalidateQueries({ queryKey: ['character', charId] })
+    alert(`Character ${isEditMode.value ? 'updated' : 'forged'} successfully!`)
+    router.push('/')
 
   } catch (error) {
-    console.error("Forging Failed:", error)
-    alert("Error saving character. Check console.")
+    console.error("Operation Failed:", error)
+    alert("An error occurred. Check the console for details.")
   }
 }
 </script>
