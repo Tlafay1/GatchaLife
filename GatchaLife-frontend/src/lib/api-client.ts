@@ -213,24 +213,41 @@ export const useClaimQuest = () => {
   });
 };
 
+import { unref } from 'vue';
+
 export const useCollection = (filters?: any) => useQuery({
   queryKey: ['collection', filters],
   queryFn: async () => {
-    const params = new URLSearchParams(filters);
+    const params = new URLSearchParams(unref(filters));
     const response = await fetch(`${OpenAPI.BASE}/gamification/collection/?${params}`);
     if (!response.ok) throw new Error('Failed to fetch collection');
     return response.json();
   },
 });
 
+export const useCardDetails = (id: number) => useQuery({
+  queryKey: ['card', id],
+  queryFn: async () => {
+    const response = await fetch(`${OpenAPI.BASE}/gamification/collection/${id}/`);
+    if (!response.ok) throw new Error('Failed to fetch card details');
+    return response.json();
+  },
+  enabled: !!id,
+});
+
 export const useGatchaRoll = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => {
+      console.log('Sending roll request to', `${OpenAPI.BASE}/gamification/gatcha/roll/`);
       const response = await fetch(`${OpenAPI.BASE}/gamification/gatcha/roll/`, {
         method: 'POST',
       });
-      if (!response.ok) throw new Error('Roll failed');
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Roll failed', response.status, errorText);
+        throw new Error(`Roll failed: ${response.status} ${errorText}`);
+      }
       return response.json();
     },
     onSuccess: () => {

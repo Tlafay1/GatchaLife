@@ -7,7 +7,7 @@ def create_initial_rarities(apps, schema_editor):
     Rarity.objects.bulk_create(
         [
             Rarity(name="Common", min_roll_threshold=0, ui_color_hex="#AAAAAA"),
-            Rarity(name="Rare", min_roll_threshold=80, ui_color_hex="#007BFF"),
+            Rarity(name="Rare", min_roll_threshold=70, ui_color_hex="#007BFF"),
             Rarity(name="Legendary", min_roll_threshold=95, ui_color_hex="#FFD700"),
         ]
     )

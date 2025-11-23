@@ -14,6 +14,11 @@ const router = createRouter({
       component: () => import('@/gamification/Collection.vue')
     },
     {
+      path: '/collection/:id',
+      name: 'card-details',
+      component: () => import('@/gamification/CardDetails.vue')
+    },
+    {
       path: '/characters',
       name: 'characters',
       component: () => import('@/character/views/CharacterListView.vue')

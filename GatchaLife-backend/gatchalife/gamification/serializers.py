@@ -46,6 +46,9 @@ class CardSerializer(serializers.ModelSerializer):
             theme=obj.theme
         ).order_by('-created_at').first()
         if image:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(image.image.url)
             return image.image.url
         return None
 
