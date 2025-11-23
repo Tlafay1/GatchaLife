@@ -5,7 +5,17 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      name: 'home',
+      name: 'dashboard',
+      component: () => import('@/gamification/Dashboard.vue')
+    },
+    {
+      path: '/collection',
+      name: 'collection',
+      component: () => import('@/gamification/Collection.vue')
+    },
+    {
+      path: '/characters',
+      name: 'characters',
       component: () => import('@/character/views/CharacterListView.vue')
     },
     {

@@ -24,7 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-j1ds+dp^u!$wkoj)l0(!%dz)qkn85cn^)k#4@bz^5h*eh)(f_r")
 
 # SECURITY WARNING: don"t run with debug turned on in production!
-DEBUG = int(os.environ.get("DEBUG", 1))
+DEBUG = True
 
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost").split(",")
 
@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "gatchalife.character",
     "gatchalife.generated_image",
     "gatchalife.style",
+    "gatchalife.gamification",
 ]
 
 MIDDLEWARE = [

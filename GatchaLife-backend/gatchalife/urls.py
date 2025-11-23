@@ -42,6 +42,7 @@ router.register(r'themes', ThemeViewSet)               # /api/themes/
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("gamification/", include("gatchalife.gamification.urls")),
     path("", include(router.urls)),
     path(
         "apidocs.<format>/", schema_view.without_ui(cache_timeout=0), name="schema-json"
