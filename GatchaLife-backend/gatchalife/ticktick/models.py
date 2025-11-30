@@ -42,8 +42,9 @@ class TickTickTask(models.Model):
     priority = models.IntegerField(default=0)
     sortOrder = models.BigIntegerField(blank=True, null=True)
     kind = models.CharField(max_length=50, blank=True, null=True)
-    reminders = models.JSONField(blank=True, null=True)
-    tags = models.JSONField(blank=True, null=True)
+    # Using TextField to avoid JSON decoding issues with managed=False and n8n data
+    reminders = models.TextField(blank=True, null=True) 
+    tags = models.TextField(blank=True, null=True)
     parentId = models.CharField(max_length=255, blank=True, null=True)
     isAllDay = models.BooleanField(default=False)
     startDate = models.DateTimeField(blank=True, null=True)
