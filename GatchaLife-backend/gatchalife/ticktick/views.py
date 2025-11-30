@@ -1,3 +1,4 @@
+import json
 from rest_framework import viewsets, permissions
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
@@ -60,8 +61,10 @@ def zapier_webhook(request):
     from django.contrib.auth.models import User
     
     # Get task data from Zapier (using their field names)
-    task_id = request.data.get('id')
-    title = request.data.get('task_name', 'Unknown Task')
+    # FIXME: Couldn't get zapier to send JSON body properly, so using form-encoded 'data' field
+    data = json.loads(request.data.get('data', '{}'))
+    task_id = data.get('id')
+    title = data.get('task_name', 'Unknown Task')
     
     if not task_id:
         return Response({
