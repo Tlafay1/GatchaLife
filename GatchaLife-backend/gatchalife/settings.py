@@ -24,7 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-j1ds+dp^u!$wkoj)l0(!%dz)qkn85cn^)k#4@bz^5h*eh)(f_r")
 
 # SECURITY WARNING: don"t run with debug turned on in production!
-DEBUG = int(os.environ.get("DEBUG", 1))
+DEBUG = True
 
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost").split(",")
 
@@ -48,10 +48,13 @@ INSTALLED_APPS = [
     "gatchalife.character",
     "gatchalife.generated_image",
     "gatchalife.style",
+    "gatchalife.gamification",
+    "gatchalife.ticktick",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -64,6 +67,11 @@ MIDDLEWARE = [
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "https://gatcha.tlafay.fr",
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://gatcha.tlafay.fr",
 ]
 
 ROOT_URLCONF = "gatchalife.urls"
@@ -98,10 +106,20 @@ DATABASES = {
         "NAME": os.environ.get("POSTGRES_DB", "gatchalife"),
         "USER": os.environ.get("POSTGRES_USER", "postgres"),
         "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "postgres"),
-        "HOST": os.environ.get("POSTGRES_HOST", "db"),
+        "HOST": os.environ.get("POSTGRES_HOST", "gatchalife-db"),
+        "PORT": os.environ.get("POSTGRES_PORT", "5432"),
+    },
+    "ticktick": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": "ticktick", # As specified by user
+        "USER": os.environ.get("POSTGRES_USER", "postgres"),
+        "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "postgres"),
+        "HOST": os.environ.get("POSTGRES_HOST", "gatchalife-db"),
         "PORT": os.environ.get("POSTGRES_PORT", "5432"),
     }
 }
+
+DATABASE_ROUTERS = ['gatchalife.db_routers.TickTickRouter']
 
 STATIC_URL = "/static/"
 MEDIA_URL = "/images/"
@@ -112,6 +130,8 @@ STATICFILES_DIRS = [
 
 MEDIA_ROOT = BASE_DIR / "static/images"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 
 # Password validation

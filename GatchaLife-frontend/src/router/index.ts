@@ -5,7 +5,27 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      name: 'home',
+      name: 'dashboard',
+      component: () => import('@/gamification/PlayerDashboard.vue')
+    },
+    {
+      path: '/collection',
+      name: 'collection',
+      component: () => import('@/gamification/CollectionList.vue')
+    },
+    {
+      path: '/collection/:id',
+      name: 'card-details',
+      component: () => import('../gamification/CardDetails.vue')
+    },
+    {
+      path: '/studio',
+      name: 'creator-studio',
+      component: () => import('../gamification/CreatorStudio.vue')
+    },
+    {
+      path: '/characters',
+      name: 'characters',
       component: () => import('@/character/views/CharacterListView.vue')
     },
     {

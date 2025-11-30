@@ -56,7 +56,11 @@ def generate_image(character_variant: CharacterVariant, rarity: Rarity, style: S
         "theme": ThemeSerializer(theme).data,
     }
 
+    print(payload)
+
     response = requests.post(n8n_url, json=payload)
+
+    print(response)
 
     response.raise_for_status()
 

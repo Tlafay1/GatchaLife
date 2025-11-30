@@ -1,4 +1,4 @@
-import { OpenAPI, SeriesService, CharactersService, VariantsService, VariantImagesService } from '@/api';
+import { OpenAPI, SeriesService, CharactersService, VariantsService, VariantImagesService, StylesService, ThemesService, RaritiesService } from '@/api';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query';
 
 // Configure the base URL for the API client
@@ -33,7 +33,7 @@ export const useDeleteCharacter = () => {
 export const useUpdateSeries = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...data }: { id: number, name: string, description?: string }) =>
+    mutationFn: ({ id, ...data }: { id: number, name: string, description?: string, unlock_level?: number }) =>
       SeriesService.seriesUpdate(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['series'] });
@@ -76,7 +76,7 @@ export const useCreateCharacter = () => {
 export const useUpdateCharacter = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...data }: { id: number, name: string, series: number, description?: string }) =>
+    mutationFn: ({ id, ...data }: { id: number, name: string, series: number, description?: string, unlock_level?: number }) =>
       CharactersService.charactersUpdate(id, data),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['characters'] });
@@ -99,7 +99,7 @@ export const useCreateVariant = () => {
 export const useUpdateVariant = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...data }: { id: number, name: string, description: string }) =>
+    mutationFn: ({ id, ...data }: { id: number, name: string, description?: string, character: number }) =>
       VariantsService.variantsUpdate(id, data),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['character', data.character] });
@@ -144,7 +144,6 @@ export const useUploadVariantImage = () => {
 };
 
 export const useDeleteVariantImage = () => {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => VariantImagesService.variantImagesDelete(id),
     onSuccess: () => {
@@ -152,3 +151,205 @@ export const useDeleteVariantImage = () => {
     },
   });
 };
+
+// --- Rarities ---
+export const useRaritiesList = () => useQuery({
+  queryKey: ['rarities'],
+  queryFn: () => RaritiesService.raritiesList(),
+});
+
+// --- Styles ---
+export const useStylesList = () => useQuery({
+  queryKey: ['styles'],
+  queryFn: () => StylesService.stylesList(),
+});
+
+export const useCreateStyle = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: StylesService.stylesCreate,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['styles'] });
+    },
+  });
+};
+
+export const useUpdateStyle = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: number, name: string, style_keywords?: string, composition_hint?: string, rarity: number }) =>
+      StylesService.stylesUpdate(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['styles'] });
+    },
+  });
+};
+
+export const useDeleteStyle = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => StylesService.stylesDelete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['styles'] });
+    },
+  });
+};
+
+// --- Themes ---
+export const useThemesList = () => useQuery({
+  queryKey: ['themes'],
+  queryFn: () => ThemesService.themesList(),
+});
+
+export const useCreateTheme = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ThemesService.themesCreate,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['themes'] });
+    },
+  });
+};
+
+export const useUpdateTheme = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }: {
+      id: number,
+      name: string,
+      category?: string,
+      ambiance?: string,
+      keywords_theme?: string,
+      prompt_background?: string,
+      integration_idea?: string,
+      unlock_level?: number
+    }) =>
+      ThemesService.themesUpdate(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['themes'] });
+    },
+  });
+};
+
+export const useDeleteTheme = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => ThemesService.themesDelete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['themes'] });
+    },
+  });
+};
+// --- Gamification ---
+export const usePlayerStats = () => useQuery({
+  queryKey: ['player'],
+  queryFn: async () => {
+    const response = await fetch(`${OpenAPI.BASE}/gamification/player/`);
+    if (!response.ok) throw new Error('Failed to fetch player stats');
+    // The viewset returns a list, but we want the first item (singleton player)
+    // Actually, the viewset logic I wrote returns a list for ModelViewSet unless we use a specific action or ID.
+    // Wait, my backend viewset `PlayerViewSet` is a ModelViewSet. `get_object` is overridden but `list` still returns a list.
+    // I should probably just fetch the list and take the first one, or use a specific endpoint.
+    // Let's assume I'll fix the backend or just handle the list here.
+    // For simplicity in this "single user" app, let's just fetch the list and take the first one.
+    const data = await response.json();
+    return Array.isArray(data) ? data[0] : data;
+  },
+});
+
+export const useSyncTickTick = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`${OpenAPI.BASE}/gamification/player/sync_ticktick/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      if (!response.ok) throw new Error('Sync failed');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['player'] });
+    },
+  });
+};
+
+export const useQuestsList = () => useQuery({
+  queryKey: ['quests'],
+  queryFn: async () => {
+    const response = await fetch(`${OpenAPI.BASE}/gamification/quests/`);
+    if (!response.ok) throw new Error('Failed to fetch quests');
+    return response.json();
+  },
+});
+
+export const useClaimQuest = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const response = await fetch(`${OpenAPI.BASE}/gamification/quests/${id}/claim/`, {
+        method: 'POST',
+      });
+      if (!response.ok) throw new Error('Claim failed');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['player'] });
+      queryClient.invalidateQueries({ queryKey: ['quests'] });
+    },
+  });
+};
+
+import { unref, type Ref } from 'vue';
+
+export const useCollection = (filters?: Ref<Record<string, unknown>> | Record<string, unknown>) => useQuery({
+  queryKey: ['collection', filters],
+  queryFn: async () => {
+    const params = new URLSearchParams(unref(filters) as Record<string, string>);
+    const response = await fetch(`${OpenAPI.BASE}/gamification/collection/?${params}`);
+    if (!response.ok) throw new Error('Failed to fetch collection');
+    return response.json();
+  },
+});
+
+export const useCardDetails = (id: number) => useQuery({
+  queryKey: ['card', id],
+  queryFn: async () => {
+    const response = await fetch(`${OpenAPI.BASE}/gamification/collection/${id}/`);
+    if (!response.ok) throw new Error('Failed to fetch card details');
+    return response.json();
+  },
+  enabled: !!id,
+});
+
+export const useGatchaRoll = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      console.log('Sending roll request to', `${OpenAPI.BASE}/gamification/gatcha/roll/`);
+      const response = await fetch(`${OpenAPI.BASE}/gamification/gatcha/roll/`, {
+        method: 'POST',
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Roll failed', response.status, errorText);
+        throw new Error(`Roll failed: ${response.status} ${errorText}`);
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['player'] });
+      queryClient.invalidateQueries({ queryKey: ['collection'] });
+    },
+  });
+};
+
+export const useTickTickStats = () => useQuery({
+  queryKey: ['ticktick-stats'],
+  queryFn: async () => {
+    const response = await fetch(`${OpenAPI.BASE}/ticktick/stats/`);
+    if (!response.ok) throw new Error('Failed to fetch stats');
+    return response.json();
+  },
+});

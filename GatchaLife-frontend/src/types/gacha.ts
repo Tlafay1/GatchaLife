@@ -22,4 +22,5 @@ export interface CharacterFormState {
   series: string; // String to handle Select value binding
   base_description: string;
   variants: LocalVariantForm[];
+  unlock_level: number;
 }

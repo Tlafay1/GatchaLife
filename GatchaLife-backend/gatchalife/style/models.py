@@ -35,6 +35,7 @@ class Style(models.Model):
     composition_hint = models.TextField(
         blank=True, help_text="Rappel sur comment l'utiliser"
     )
+    unlock_level = models.PositiveIntegerField(default=1)
 
     def __str__(self):
         return f"{self.name} ({self.rarity.name})"
@@ -61,6 +62,7 @@ class Theme(models.Model):
     integration_idea = models.TextField(
         blank=True, help_text="Rappel sur comment intégrer le personnage"
     )
+    unlock_level = models.PositiveIntegerField(default=1)
 
     def __str__(self):
         return self.name

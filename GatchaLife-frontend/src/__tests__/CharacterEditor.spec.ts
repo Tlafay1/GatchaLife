@@ -1,8 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { ref } from 'vue';
 import CharacterEditor from '@/character/views/CharacterEditor.vue';
 import * as apiClient from '@/lib/api-client';
+import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query';
+import type { Router } from 'vue-router';
 
 vi.mock('@/lib/api-client');
 vi.mock('vue-router', () => ({
@@ -14,23 +16,23 @@ vi.mock('vue-router', () => ({
 describe('CharacterEditor.vue', () => {
   const routerMock = {
     push: vi.fn(),
-  };
+  } as unknown as Router;
 
   beforeEach(() => {
     vi.clearAllMocks();
     global.alert = vi.fn();
 
     // Mock the API client hooks
-    (apiClient.useSeriesList as vi.Mock).mockReturnValue({ data: [], isLoading: false });
-    (apiClient.useCharacterDetails as vi.Mock).mockReturnValue({ data: null, isLoading: false });
-    (apiClient.useCreateSeries as vi.Mock).mockReturnValue({ mutateAsync: vi.fn() });
-    (apiClient.useCreateCharacter as vi.Mock).mockReturnValue({ mutateAsync: vi.fn(), isPending: ref(false) });
-    (apiClient.useUpdateCharacter as vi.Mock).mockReturnValue({ mutateAsync: vi.fn(), isPending: ref(false) });
-    (apiClient.useCreateVariant as vi.Mock).mockReturnValue({ mutateAsync: vi.fn(), isPending: ref(false) });
-    (apiClient.useUpdateVariant as vi.Mock).mockReturnValue({ mutateAsync: vi.fn(), isPending: ref(false) });
-    (apiClient.useDeleteVariant as vi.Mock).mockReturnValue({ mutateAsync: vi.fn(), isPending: ref(false) });
-    (apiClient.useUploadVariantImage as vi.Mock).mockReturnValue({ mutateAsync: vi.fn(), isPending: ref(false) });
-    (apiClient.useDeleteVariantImage as vi.Mock).mockReturnValue({ mutateAsync: vi.fn(), isPending: ref(false) });
+    (apiClient.useSeriesList as Mock).mockReturnValue({ data: [], isLoading: false });
+    (apiClient.useCharacterDetails as Mock).mockReturnValue({ data: null, isLoading: false });
+    (apiClient.useCreateSeries as Mock).mockReturnValue({ mutateAsync: vi.fn() });
+    (apiClient.useCreateCharacter as Mock).mockReturnValue({ mutateAsync: vi.fn(), isPending: ref(false) });
+    (apiClient.useUpdateCharacter as Mock).mockReturnValue({ mutateAsync: vi.fn(), isPending: ref(false) });
+    (apiClient.useCreateVariant as Mock).mockReturnValue({ mutateAsync: vi.fn(), isPending: ref(false) });
+    (apiClient.useUpdateVariant as Mock).mockReturnValue({ mutateAsync: vi.fn(), isPending: ref(false) });
+    (apiClient.useDeleteVariant as Mock).mockReturnValue({ mutateAsync: vi.fn(), isPending: ref(false) });
+    (apiClient.useUploadVariantImage as Mock).mockReturnValue({ mutateAsync: vi.fn(), isPending: ref(false) });
+    (apiClient.useDeleteVariantImage as Mock).mockReturnValue({ mutateAsync: vi.fn(), isPending: ref(false) });
   });
 
   it('renders the form', () => {
@@ -38,8 +40,8 @@ describe('CharacterEditor.vue', () => {
       global: {
         plugins: [
           (app) => {
-            const queryClient = new (require('@tanstack/vue-query').QueryClient)();
-            app.use(require('@tanstack/vue-query').VueQueryPlugin, { queryClient });
+            const queryClient = new QueryClient();
+            app.use(VueQueryPlugin, { queryClient });
             app.config.globalProperties.$router = routerMock;
           },
         ],
@@ -53,14 +55,14 @@ describe('CharacterEditor.vue', () => {
 
   it('submits the form and calls the correct API endpoints', async () => {
     const createCharacterMock = vi.fn().mockResolvedValue({ id: 1 });
-    (apiClient.useCreateCharacter as vi.Mock).mockReturnValue({ mutateAsync: createCharacterMock, isPending: ref(false) });
+    (apiClient.useCreateCharacter as Mock).mockReturnValue({ mutateAsync: createCharacterMock, isPending: ref(false) });
 
     const wrapper = mount(CharacterEditor, {
       global: {
         plugins: [
           (app) => {
-            const queryClient = new (require('@tanstack/vue-query').QueryClient)();
-            app.use(require('@tanstack/vue-query').VueQueryPlugin, { queryClient });
+            const queryClient = new QueryClient();
+            app.use(VueQueryPlugin, { queryClient });
             app.config.globalProperties.$router = routerMock;
           },
         ],
@@ -74,7 +76,8 @@ describe('CharacterEditor.vue', () => {
     await wrapper.find('input[placeholder="e.g. Sylphiette"]').setValue('Test Character');
     await wrapper.find('textarea[placeholder="Core traits: species, gender, personality, key features..."]').setValue('Test Description');
     // Mock series selection
-    wrapper.vm.form.series = '1';
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (wrapper.vm as any).form.series = '1';
 
     // Submit the form
     await wrapper.find('button').trigger('click');
@@ -84,6 +87,7 @@ describe('CharacterEditor.vue', () => {
       name: 'Test Character',
       series: 1,
       description: 'Test Description',
+      unlock_level: 1
     });
   });
 });

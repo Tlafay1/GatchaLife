@@ -58,7 +58,7 @@ import { useCharactersList, useSeriesList, useDeleteCharacter } from '@/lib/api-
 import type { Character, Series } from '@/api'
 
 const { data: characters, isLoading: isCharactersLoading } = useCharactersList()
-const { data: series, isLoading: isSeriesLoading } = useSeriesList()
+const { data: series } = useSeriesList()
 
 const { mutate: deleteCharacter } = useDeleteCharacter()
 
@@ -82,9 +82,15 @@ const charactersBySeries = computed<SeriesGroup[]>(() => {
     if (!char.series) return;
     const seriesId = char.series
     if (!groups[seriesId]) {
-      groups[seriesId] = {
-        series: series.value?.find(s => s.id === seriesId)!,
-        characters: []
+      const foundSeries = series.value?.find(s => s.id === seriesId);
+      if (foundSeries) {
+        groups[seriesId] = {
+          series: foundSeries,
+          characters: []
+        }
+      } else {
+        // Fallback or skip if series not found (shouldn't happen with proper FKs)
+        return;
       }
     }
     groups[seriesId].characters.push(char)

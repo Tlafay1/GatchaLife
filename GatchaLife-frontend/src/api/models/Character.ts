@@ -1,7 +1,7 @@
 /* generated using openapi-typescript-codegen -- do not edit */
 /* istanbul ignore file */
 /* tslint:disable */
-/* eslint-disable */
+ 
 import type { CharacterVariant } from './CharacterVariant';
 import type { VariantReferenceImage } from './VariantReferenceImage';
 export type Character = {
@@ -11,5 +11,6 @@ export type Character = {
     readonly images?: Array<VariantReferenceImage>;
     readonly variants?: Array<CharacterVariant>;
     series: number;
+    unlock_level?: number;
 };
 
