@@ -1,31 +1,37 @@
 <script setup lang="ts">
-import { usePlayerStats, useSyncTickTick, useGatchaRoll, useTickTickStats } from '@/lib/api-client';
+import { usePlayerStats, useGatchaRoll, useTickTickStats, useCollection } from '@/lib/api-client';
 import { ref, computed, watch } from 'vue';
 import GatchaAnimation from './GatchaAnimation.vue';
 import StatCard from '@/components/StatCard.vue';
 import LevelUpModal from '@/components/LevelUpModal.vue';
 import {
-  PenTool,
   Coins,
-  CheckSquare,
-  Trophy,
-  Layers,
   Sparkles,
   Gem,
   PlusCircle,
-  RefreshCw,
-  ClipboardList
+  ClipboardList,
+  CheckCircle2,
+  Library,
+  Flame
 } from 'lucide-vue-next';
 
 const { data: player, refetch: refetchPlayer } = usePlayerStats();
-const { mutate: syncTickTick, isPending: isSyncing } = useSyncTickTick();
 const { mutate: rollGatcha, isPending: isRolling } = useGatchaRoll();
-const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useTickTickStats();
+const { data: stats, isLoading: statsLoading } = useTickTickStats();
+const { data: collection } = useCollection();
 
 const showGatcha = ref(false);
-const dropData = ref(null);
+const dropData = ref<{
+  card: {
+    rarity_name: string;
+    image_url?: string;
+    character_variant_name: string;
+    style_name: string;
+    theme_name: string;
+  };
+  is_new: boolean;
+} | null>(null);
 const showLevelUp = ref(false);
-const previousLevel = ref<number | null>(null);
 
 // Watch for level up
 watch(() => player.value?.level, (newLevel, oldLevel) => {
@@ -39,21 +45,6 @@ const xpPercentage = computed(() => {
   const maxXp = player.value.level * 100;
   return Math.min((player.value.xp / maxXp) * 100, 100);
 });
-
-const handleSync = () => {
-  const oldLevel = player.value?.level;
-  syncTickTick(undefined, {
-    onSuccess: (data) => {
-      console.log('Synced!', data);
-      refetchPlayer().then(() => {
-        refetchStats();
-        if (data.new_level > (oldLevel || 1)) {
-          showLevelUp.value = true;
-        }
-      });
-    }
-  });
-};
 
 const handleRoll = () => {
   rollGatcha(undefined, {
@@ -92,7 +83,8 @@ const closeGatcha = () => {
           <router-link to="/studio"
             class="p-2 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
             title="Creator Studio">
-            <PenTool class="w-5 h-5" />
+            <!-- Icon removed or replaced if needed, but PenTool was removed from imports -->
+            <span class="text-sm font-bold">Studio</span>
           </router-link>
 
           <!-- Coin Display -->
@@ -140,18 +132,37 @@ const closeGatcha = () => {
                 <span class="text-blue-300">Level {{ player?.level || 1 }}</span>
                 <span class="text-slate-400">{{ player?.xp || 0 }} / {{ (player?.level || 1) * 100 }} XP</span>
               </div>
-              <div
-                class="h-3 w-full bg-slate-950/50 rounded-full overflow-hidden backdrop-blur-sm border border-white/5 relative">
+              <div class="relative group cursor-help">
                 <div
-                  class="h-full bg-gradient-to-r from-blue-500 to-purple-500 shadow-[0_0_15px_rgba(59,130,246,0.5)] transition-all duration-1000 ease-out relative overflow-hidden"
-                  :style="{ width: `${xpPercentage}%` }">
+                  class="h-3 w-full bg-slate-950/50 rounded-full overflow-hidden backdrop-blur-sm border border-white/5">
                   <div
-                    class="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent w-full -translate-x-full animate-[shimmer_2s_infinite]">
+                    class="h-full bg-gradient-to-r from-blue-500 to-purple-500 shadow-[0_0_15px_rgba(59,130,246,0.5)] transition-all duration-1000 ease-out relative overflow-hidden"
+                    :style="{ width: `${xpPercentage}%` }">
+                    <div
+                      class="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent w-full -translate-x-full animate-[shimmer_2s_infinite]">
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Tooltip -->
+                <div
+                  class="absolute opacity-0 group-hover:opacity-100 transition-opacity bottom-full left-1/2 -translate-x-1/2 mb-2 bg-popover text-popover-foreground text-xs rounded px-2 py-1 shadow-lg whitespace-nowrap z-10 pointer-events-none">
+                  {{ player?.xp || 0 }} / {{ (player?.level || 1) * 100 }} XP
+                  <div class="text-[10px] text-muted-foreground mt-1 border-t border-border/50 pt-1">
+                    Next Level: +0.5% Luck Bonus
                   </div>
                 </div>
               </div>
-              <div class="text-xs text-slate-500 text-right">
+
+              <div class="text-xs text-slate-500 text-right mb-2 mt-1">
                 {{ Math.floor(((player?.level || 1) * 100) - (player?.xp || 0)) }} XP to next level
+              </div>
+
+              <div class="flex justify-between text-xs text-muted-foreground font-medium">
+                <span>Level {{ player?.level || 1 }}</span>
+                <span class="text-primary font-bold">Luck Bonus: +{{ Math.min((player?.level || 1) * 0.5,
+                  20).toFixed(1) }}%</span>
+                <span>Level {{ (player?.level || 1) + 1 }}</span>
               </div>
             </div>
           </div>
@@ -178,16 +189,18 @@ const closeGatcha = () => {
       </div>
 
       <!-- Stats Grid -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6" v-motion :initial="{ opacity: 0, y: 20 }"
-        :enter="{ opacity: 1, y: 0, transition: { delay: 200 } }">
-        <StatCard title="Tasks Today" :value="stats?.rewarded_today || 0" :icon="CheckSquare" color="text-green-500"
-          bg-gradient="from-green-500/20 to-green-500/5" />
-        <StatCard title="Total Completed" :value="stats?.total_completed_all_time || 0" :icon="Trophy"
-          color="text-blue-500" bg-gradient="from-blue-500/20 to-blue-500/5" />
-        <StatCard title="Coins" :value="player?.gatcha_coins || 0" :icon="Coins" color="text-yellow-500"
-          bg-gradient="from-yellow-500/20 to-yellow-500/5" />
-        <StatCard title="Collection" value="View All" :icon="Layers" color="text-purple-500"
-          bg-gradient="from-purple-500/20 to-purple-500/5" clickable @click="$router.push('/collection')" />
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8" v-motion-slide-visible-once-bottom>
+        <StatCard title="Tasks Completed" :value="stats?.completed_today || 0" :icon="CheckCircle2"
+          color="text-green-500" bg-gradient="from-green-500/10 to-transparent" />
+
+        <StatCard title="Gatcha Coins" :value="player?.gatcha_coins || 0" :icon="Coins" color="text-yellow-500"
+          bg-gradient="from-yellow-500/10 to-transparent" />
+
+        <StatCard title="Collection" :value="collection?.length || 0" :icon="Library" color="text-purple-500"
+          bg-gradient="from-purple-500/10 to-transparent" clickable @click="$router.push('/collection')" />
+
+        <StatCard title="Current Streak" :value="`${stats?.current_streak || 0} Days`" :icon="Flame"
+          color="text-orange-500" bg-gradient="from-orange-500/10 to-transparent" />
       </div>
 
       <!-- Main Content Grid -->
@@ -257,7 +270,7 @@ const closeGatcha = () => {
 
                 <div class="space-y-1">
                   <div class="font-bold text-sm line-clamp-2 group-hover:text-primary transition-colors">{{ task.title
-                  }}</div>
+}}</div>
                   <div class="text-xs text-muted-foreground">{{ new Date(task.processed_at).toLocaleTimeString([],
                     { hour: '2-digit', minute: '2-digit' }) }}</div>
                   <div
@@ -282,7 +295,7 @@ const closeGatcha = () => {
     </main>
 
     <LevelUpModal :show="showLevelUp" :level="player?.level || 1" @close="showLevelUp = false" />
-    <GatchaAnimation v-if="showGatcha" :drop="dropData" @close="closeGatcha" />
+    <GatchaAnimation v-if="showGatcha && dropData" :drop="dropData" @close="closeGatcha" />
   </div>
 </template>
 

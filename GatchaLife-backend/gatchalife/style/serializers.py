@@ -18,6 +18,7 @@ class StyleSerializer(serializers.ModelSerializer):
             "style_keywords",
             "composition_hint",
             "rarity",
+            "unlock_level",
         ]
 
 
@@ -32,4 +33,5 @@ class ThemeSerializer(serializers.ModelSerializer):
             "keywords_theme",
             "prompt_background",
             "integration_idea",
+            "unlock_level",
         ]

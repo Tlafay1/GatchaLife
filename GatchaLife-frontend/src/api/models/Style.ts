@@ -1,7 +1,7 @@
 /* generated using openapi-typescript-codegen -- do not edit */
 /* istanbul ignore file */
 /* tslint:disable */
-/* eslint-disable */
+ 
 export type Style = {
     readonly id?: number;
     name: string;
@@ -14,5 +14,6 @@ export type Style = {
      */
     composition_hint?: string;
     rarity: number;
+    unlock_level?: number;
 };
 

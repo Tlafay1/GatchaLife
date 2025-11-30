@@ -1,7 +1,7 @@
 /* generated using openapi-typescript-codegen -- do not edit */
 /* istanbul ignore file */
 /* tslint:disable */
-/* eslint-disable */
+ 
 export type Theme = {
     readonly id?: number;
     name: string;
@@ -22,5 +22,6 @@ export type Theme = {
      * Rappel sur comment intégrer le personnage
      */
     integration_idea?: string;
+    unlock_level?: number;
 };
 

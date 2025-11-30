@@ -1,8 +1,17 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 
-const props = defineProps<{
-  drop: any;
+defineProps<{
+  drop: {
+    card: {
+      rarity_name: string;
+      image_url?: string;
+      character_variant_name: string;
+      style_name: string;
+      theme_name: string;
+    };
+    is_new: boolean;
+  };
 }>();
 
 const emit = defineEmits(['close']);

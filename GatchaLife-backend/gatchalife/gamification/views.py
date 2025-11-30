@@ -79,29 +79,60 @@ class GatchaViewSet(viewsets.ViewSet):
         player.save()
         
         # Drop Logic
-        # 1. Pick Rarity based on weights
+        # 1. Pick Rarity based on weights with Level Boost
         rarities = Rarity.objects.all()
         if not rarities.exists():
              return Response({'error': 'No rarities defined'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        # Simple weighted random (assuming min_roll_threshold is 0-100)
-        roll = random.randint(1, 100)
+        # Base roll 1-100
+        base_roll = random.randint(1, 100)
+        
+        # Level Boost: +0.5% chance for higher rarities per level (capped at +20%)
+        # We simulate this by adding a bonus to the roll
+        level_bonus = min(player.level * 0.5, 20.0)
+        final_roll = min(base_roll + level_bonus, 100)
         
         selected_rarity = None
         # Sort by threshold descending to find the highest matching one
         ordered_rarities = list(rarities.order_by('-min_roll_threshold'))
         for r in ordered_rarities:
-            if roll >= r.min_roll_threshold:
+            if final_roll >= r.min_roll_threshold:
                 selected_rarity = r
                 break
         
         if not selected_rarity:
             selected_rarity = rarities.order_by('min_roll_threshold').first()
 
-        # 2. Pick Character, Style, Theme
-        variants = CharacterVariant.objects.all()
-        styles = Style.objects.filter(rarity=selected_rarity)
-        themes = Theme.objects.all()
+        # 2. Pick Character, Style, Theme based on Unlock Level
+        # Filter variants where character unlock level AND series unlock level are met
+        variants = CharacterVariant.objects.filter(
+            character__unlock_level__lte=player.level,
+            character__series__unlock_level__lte=player.level
+        )
+        
+        styles = Style.objects.filter(
+            rarity=selected_rarity,
+            unlock_level__lte=player.level
+        )
+        
+        themes = Theme.objects.filter(
+            unlock_level__lte=player.level
+        )
+        
+        # Fallback: If no content matches level (e.g. new player but all content is high level),
+        # try to find ANY content to avoid errors, or return specific error.
+        # For now, let's fallback to all content if strict filtering returns empty, 
+        # but ideally we should have Level 1 content always available.
+        if not variants.exists():
+            variants = CharacterVariant.objects.all()
+        if not styles.exists():
+            # If no style for this rarity at this level, try any style for this rarity
+            styles = Style.objects.filter(rarity=selected_rarity)
+            if not styles.exists():
+                 # If still no style (e.g. rarity has no styles), fallback to any style
+                 styles = Style.objects.all()
+        if not themes.exists():
+            themes = Theme.objects.all()
         
         if not variants.exists() or not styles.exists() or not themes.exists():
              return Response({'error': 'Missing game data (variants/styles/themes)'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -145,5 +176,11 @@ class GatchaViewSet(viewsets.ViewSet):
         return Response({
             'drop': serializer.data,
             'is_new': created,
-            'remaining_coins': player.gatcha_coins
+            'remaining_coins': player.gatcha_coins,
+            'roll_info': {
+                'base_roll': base_roll,
+                'level_bonus': level_bonus,
+                'final_roll': final_roll,
+                'rarity': selected_rarity.name
+            }
         })

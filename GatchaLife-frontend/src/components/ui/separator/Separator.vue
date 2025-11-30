@@ -1,3 +1,4 @@
+<!-- eslint-disable vue/multi-word-component-names -->
 <script setup lang="ts">
 import type { SeparatorProps } from "reka-ui"
 import type { HTMLAttributes } from "vue"

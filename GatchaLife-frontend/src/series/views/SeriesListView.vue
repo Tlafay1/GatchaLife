@@ -46,6 +46,11 @@
             <Input v-model="form.name" placeholder="e.g. Mushoku Tensei" />
           </div>
           <div class="space-y-2">
+            <Label>Unlock Level</Label>
+            <Input v-model="form.unlock_level" type="number" min="1" placeholder="1" />
+            <p class="text-xs text-muted-foreground">Player level required to unlock this series.</p>
+          </div>
+          <div class="space-y-2">
             <Label>Description</Label>
             <Textarea v-model="form.description" placeholder="Series description..." />
           </div>
@@ -84,13 +89,15 @@ const isSubmitting = computed(() => isCreating.value || isUpdating.value)
 
 const form = reactive({
   name: '',
-  description: ''
+  description: '',
+  unlock_level: 1
 })
 
 const openCreateDialog = () => {
   editingId.value = null
   form.name = ''
   form.description = ''
+  form.unlock_level = 1
   isDialogOpen.value = true
 }
 
@@ -98,6 +105,7 @@ const openEditDialog = (series: Series) => {
   editingId.value = series.id!
   form.name = series.name
   form.description = series.description || ''
+  form.unlock_level = series.unlock_level || 1
   isDialogOpen.value = true
 }
 
@@ -110,7 +118,8 @@ const handleSubmit = async () => {
   try {
     const payload = {
       name: form.name,
-      description: form.description
+      description: form.description,
+      unlock_level: form.unlock_level
     }
 
     if (isEditing.value && editingId.value) {

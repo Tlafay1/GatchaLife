@@ -33,7 +33,7 @@ export const useDeleteCharacter = () => {
 export const useUpdateSeries = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...data }: { id: number, name: string, description?: string }) =>
+    mutationFn: ({ id, ...data }: { id: number, name: string, description?: string, unlock_level?: number }) =>
       SeriesService.seriesUpdate(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['series'] });
@@ -76,7 +76,7 @@ export const useCreateCharacter = () => {
 export const useUpdateCharacter = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...data }: { id: number, name: string, series: number, description?: string }) =>
+    mutationFn: ({ id, ...data }: { id: number, name: string, series: number, description?: string, unlock_level?: number }) =>
       CharactersService.charactersUpdate(id, data),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['characters'] });
@@ -144,7 +144,6 @@ export const useUploadVariantImage = () => {
 };
 
 export const useDeleteVariantImage = () => {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => VariantImagesService.variantImagesDelete(id),
     onSuccess: () => {
@@ -222,7 +221,8 @@ export const useUpdateTheme = () => {
       ambiance?: string,
       keywords_theme?: string,
       prompt_background?: string,
-      integration_idea?: string
+      integration_idea?: string,
+      unlock_level?: number
     }) =>
       ThemesService.themesUpdate(id, data),
     onSuccess: () => {
@@ -301,12 +301,12 @@ export const useClaimQuest = () => {
   });
 };
 
-import { unref } from 'vue';
+import { unref, type Ref } from 'vue';
 
-export const useCollection = (filters?: any) => useQuery({
+export const useCollection = (filters?: Ref<Record<string, unknown>> | Record<string, unknown>) => useQuery({
   queryKey: ['collection', filters],
   queryFn: async () => {
-    const params = new URLSearchParams(unref(filters));
+    const params = new URLSearchParams(unref(filters) as Record<string, string>);
     const response = await fetch(`${OpenAPI.BASE}/gamification/collection/?${params}`);
     if (!response.ok) throw new Error('Failed to fetch collection');
     return response.json();

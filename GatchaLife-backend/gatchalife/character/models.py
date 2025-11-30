@@ -4,6 +4,7 @@ from django.db import models
 class Series(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
+    unlock_level = models.PositiveIntegerField(default=1)
 
     def __str__(self):
         return self.name
@@ -14,6 +15,7 @@ class Character(models.Model):
     name = models.CharField(max_length=100)
     series = models.ForeignKey(Series, on_delete=models.CASCADE)
     description = models.TextField(blank=True)
+    unlock_level = models.PositiveIntegerField(default=1)
 
     def __str__(self):
         return self.name

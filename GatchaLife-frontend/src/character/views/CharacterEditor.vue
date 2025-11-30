@@ -1,6 +1,6 @@
 <template>
   <div class="max-w-4xl mx-auto p-6 space-y-8">
-    
+
     <div class="flex items-center justify-between">
       <div>
         <h1 class="text-3xl font-bold tracking-tight">{{ isEditMode ? 'Edit Character' : 'Character Forge' }}</h1>
@@ -23,7 +23,7 @@
             <Label>Character Name</Label>
             <Input v-model="form.name" placeholder="e.g. Sylphiette" />
           </div>
-          
+
           <div class="space-y-2">
             <Label>Series Source</Label>
             <div class="flex gap-2">
@@ -33,16 +33,12 @@
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem v-if="isLoadingSeries" value="loading" disabled>Loading...</SelectItem>
-                  <SelectItem 
-                    v-for="s in seriesList" 
-                    :key="s.id" 
-                    :value="String(s.id)"
-                  >
+                  <SelectItem v-for="s in seriesList" :key="s.id" :value="String(s.id)">
                     {{ s.name }}
                   </SelectItem>
                 </SelectContent>
               </Select>
-              
+
               <Dialog v-model:open="isSeriesDialogOpen">
                 <DialogTrigger as-child>
                   <Button variant="outline" size="icon" title="Add New Series">
@@ -61,11 +57,8 @@
                     </div>
                     <div class="grid grid-cols-4 items-center gap-4">
                       <Label class="text-right">Description</Label>
-                      <Textarea 
-                        v-model="newSeriesDescription" 
-                        class="col-span-3 h-24 resize-none"
-                        placeholder="Optional description for this series..."
-                      />
+                      <Textarea v-model="newSeriesDescription" class="col-span-3 h-24 resize-none"
+                        placeholder="Optional description for this series..." />
                     </div>
                   </div>
                   <DialogFooter>
@@ -81,11 +74,14 @@
 
         <div class="space-y-2">
           <Label>Base Description</Label>
-          <Textarea 
-            v-model="form.base_description" 
-            class="min-h-[100px]"
-            placeholder="Core traits: species, gender, personality, key features..."
-          />
+          <Textarea v-model="form.base_description" class="min-h-[100px]"
+            placeholder="Core traits: species, gender, personality, key features..." />
+        </div>
+
+        <div class="space-y-2">
+          <Label>Unlock Level</Label>
+          <Input v-model="form.unlock_level" type="number" min="1" placeholder="1" />
+          <p class="text-xs text-muted-foreground">Player level required to unlock this character.</p>
         </div>
       </CardContent>
     </Card>
@@ -98,18 +94,15 @@
         </Button>
       </div>
 
-      <div v-if="form.variants.length === 0" class="flex flex-col items-center justify-center py-12 border-2 border-dashed rounded-lg bg-muted/30">
+      <div v-if="form.variants.length === 0"
+        class="flex flex-col items-center justify-center py-12 border-2 border-dashed rounded-lg bg-muted/30">
         <div class="text-muted-foreground mb-2">No variants defined</div>
         <Button variant="link" @click="addVariant">Create your first variant</Button>
       </div>
 
-      <VariantItem 
-        v-for="(variant, index) in form.variants" 
-        :key="variant.id || `new-${index}`"
-        v-model="form.variants[index]"
-        @remove="removeVariant(index)"
-        :onScheduleImageForDeletion="scheduleImageForDeletion"
-      />
+      <VariantItem v-for="(variant, index) in form.variants" :key="variant.id || `new-${index}`" :model-value="variant"
+        @update:model-value="(newVal) => form.variants[index] = newVal" @remove="removeVariant(index)"
+        :onScheduleImageForDeletion="scheduleImageForDeletion" />
     </div>
 
   </div>
@@ -138,7 +131,7 @@ import {
   useCreateVariant, useUpdateVariant, useDeleteVariant,
   useUploadVariantImage, useDeleteVariantImage
 } from '@/lib/api-client'
-import type { CharacterFormState, LocalVariantForm, LocalVariantImage } from '@/types/gacha'
+import type { CharacterFormState } from '@/types/gacha'
 
 const props = defineProps<{ id?: string }>()
 const router = useRouter()
@@ -151,19 +144,21 @@ const form = reactive<CharacterFormState>({
   name: '',
   series: '',
   base_description: '',
-  variants: []
+  variants: [],
+  unlock_level: 1
 })
 const variantsToDelete = ref<number[]>([])
 const imagesToDelete = ref<number[]>([])
 
 // --- DATA FETCHING (for edit mode) ---
-const { data: characterData, isLoading: isLoadingCharacter } = useCharacterDetails(parseInt(props.id || ''))
+const { data: characterData } = useCharacterDetails(parseInt(props.id || ''))
 
 watch(characterData, (newChar) => {
   if (newChar) {
     form.name = newChar.name || ''
     form.series = String(newChar.series as number)
     form.base_description = newChar.description || ''
+    form.unlock_level = newChar.unlock_level || 1
     form.variants = (newChar.variants || []).map(v => ({
       id: v.id,
       name: v.name || '',
@@ -246,7 +241,8 @@ const onSubmit = async () => {
         id: parseInt(props.id!),
         name: form.name,
         series: parseInt(form.series),
-        description: form.base_description
+        description: form.base_description,
+        unlock_level: form.unlock_level
       })
       charId = updated.id!
     } else {
@@ -254,7 +250,8 @@ const onSubmit = async () => {
       const newChar = await createCharacter({
         name: form.name,
         series: parseInt(form.series),
-        description: form.base_description
+        description: form.base_description,
+        unlock_level: form.unlock_level
       })
       charId = newChar.id!
     }
@@ -305,4 +302,7 @@ const onSubmit = async () => {
     alert("An error occurred. Check the console for details.")
   }
 }
+
+defineExpose({ form })
 </script>
+```

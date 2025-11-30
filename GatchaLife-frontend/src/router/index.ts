@@ -6,12 +6,12 @@ const router = createRouter({
     {
       path: '/',
       name: 'dashboard',
-      component: () => import('@/gamification/Dashboard.vue')
+      component: () => import('@/gamification/PlayerDashboard.vue')
     },
     {
       path: '/collection',
       name: 'collection',
-      component: () => import('@/gamification/Collection.vue')
+      component: () => import('@/gamification/CollectionList.vue')
     },
     {
       path: '/collection/:id',

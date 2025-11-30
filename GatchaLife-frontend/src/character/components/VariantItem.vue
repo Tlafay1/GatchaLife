@@ -119,7 +119,6 @@ const handleFiles = (e: Event) => {
 
   const newFiles = Array.from(input.files).map(f => ({
     file: f,
-    view_type: 'front' as ViewType,
     is_new: true
   }))
 
@@ -130,7 +129,9 @@ const handleFiles = (e: Event) => {
 }
 
 const removeImage = (index: number) => {
-  const image = props.modelValue.images[index]
+  const image = props.modelValue.images?.[index]
+  if (!image) return
+
   if (image.id) {
     props.onScheduleImageForDeletion(image.id)
   }

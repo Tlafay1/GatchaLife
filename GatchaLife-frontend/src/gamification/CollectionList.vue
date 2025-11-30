@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useCollection } from '@/lib/api-client';
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
 
 const filters = ref({
   rarity: '',
