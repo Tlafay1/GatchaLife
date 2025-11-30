@@ -39,7 +39,7 @@ class TickTickViewSet(viewsets.ViewSet):
         })
 
 @csrf_exempt
-@api_view(['GET'])
+@api_view(['POST'])
 @permission_classes([permissions.AllowAny])
 def zapier_webhook(request):
     """
