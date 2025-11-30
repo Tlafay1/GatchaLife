@@ -1,0 +1,26 @@
+# name: Deploy to Home Server
+
+# on:
+#   push:
+#     branches: [ "main", "master", "character" ] # Adjust branch as needed
+
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
+
+#       - name: Install SSH Key
+#         uses: shimataro/ssh-key-action@v2
+#         with:
+#           key: ${{ secrets.SSH_PRIVATE_KEY }}
+#           known_hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
+
+#       - name: Deploy via SSH
+#         run: |
+#           ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "
+#             cd /path/to/GatchaLife &&
+#             git pull &&
+#             docker compose -f docker-compose.prod.yml up -d --build
+#           "
