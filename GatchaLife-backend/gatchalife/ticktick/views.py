@@ -44,24 +44,28 @@ def zapier_webhook(request):
     """
     Webhook endpoint for Zapier to call when a task is completed.
     
-    Expected payload:
+    Expected payload from Zapier:
     {
-        "task_id": "string",
-        "title": "string",
-        "project_id": "string" (optional),
-        "completed_at": "ISO datetime" (optional)
+        "id": "string",
+        "task_name": "string",
+        "list": "string" (optional),
+        "tag": "string" (optional),
+        "priority": "string" (optional),
+        "timestamp": number (optional),
+        "link_to_task": "string" (optional),
+        "repeat_flag": "string" (optional)
     }
     """
     from gatchalife.gamification.models import Player
     from django.contrib.auth.models import User
     
-    # Get task data from Zapier
-    task_id = request.data.get('task_id') or request.data.get('id')
-    title = request.data.get('title', 'Unknown Task')
+    # Get task data from Zapier (using their field names)
+    task_id = request.data.get('id')
+    title = request.data.get('task_name', 'Unknown Task')
     
     if not task_id:
         return Response({
-            'error': 'task_id is required'
+            'error': 'id is required'
         }, status=http_status.HTTP_400_BAD_REQUEST)
     
     # Check if we've already processed this task
@@ -105,6 +109,7 @@ def zapier_webhook(request):
     return Response({
         'status': 'success',
         'task_id': task_id,
+        'task_name': title,
         'xp_gained': xp_gain,
         'currency_gained': currency_gain,
         'levels_gained': levels_gained,
