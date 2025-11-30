@@ -39,7 +39,7 @@ class TickTickViewSet(viewsets.ViewSet):
         })
 
 @csrf_exempt
-@api_view(['POST'])
+@api_view(['GET'])
 @permission_classes([permissions.AllowAny])
 def zapier_webhook(request):
     """
@@ -50,7 +50,7 @@ def zapier_webhook(request):
         "id": "string",
         "task_name": "string",
         "list": "string" (optional),
-        "tag": "string" (optional),
+        "tag": "List[string]" (optional),
         "priority": "string" (optional),
         "timestamp": number (optional),
         "link_to_task": "string" (optional),
