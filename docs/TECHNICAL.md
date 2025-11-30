@@ -60,6 +60,27 @@ Key relationships:
 - `UserCard` links `Player` to `Card` with a `count` field.
 - `GeneratedImage` stores the actual image file, linked to the same 4 parameters as a Card.
 
+## 📅 TickTick Integration
+The system integrates with TickTick via a shared database approach.
+- **Data Flow**: TickTick -> n8n -> PostgreSQL (`ticktick` DB) -> Django Backend.
+- **Database Router**: A custom router (`gatchalife.db_routers.TickTickRouter`) directs queries for `TickTickTask`, `TickTickProject`, and `TickTickColumn` to the `ticktick` database, while keeping game data in the `default` database.
+- **Sync Logic**:
+  1.  Frontend triggers `sync_ticktick` endpoint.
+  2.  Backend triggers n8n webhook (fire-and-forget) to ensure data is fresh.
+  3.  Backend queries `ticktick` DB for completed tasks (`status=2`).
+  4.  Backend filters out tasks already in `ProcessedTask` (in `default` DB).
+  5.  Rewards are calculated and `ProcessedTask` records are created.
+
+## 🚀 Deployment
+The project is designed for self-hosting on a home server.
+- **Production Compose**: `docker-compose.prod.yml` defines the production stack.
+  - Connects to existing `postgres-network` and `proxy-network`.
+  - Uses `gatcha.tlafay.fr` domain.
+- **CI/CD**: GitHub Actions (`.github/workflows/deploy.yml`) handles deployment.
+  - Builds images on the server via SSH.
+  - Restarts containers with zero downtime (rolling update if scaled, otherwise brief restart).
+- **Frontend Serving**: In production, Nginx serves the static Vue assets and proxies `/api` requests to the backend.
+
 ## 🚀 Running the Project
 ```bash
 # Start all services

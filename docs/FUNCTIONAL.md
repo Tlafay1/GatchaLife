@@ -11,6 +11,7 @@ The central hub of your GatchaLife experience.
 - **XP Bar**: Visual progress bar showing how close you are to the next level.
 - **Daily Tasks**: Sync with your TickTick account to claim rewards for completed tasks.
   - *Current Reward Rate*: 10 XP and 5 Coins per task.
+- **Productivity Stats**: Track your daily and all-time completed tasks, and see a log of your recent rewards.
 - **Summoning**: Access the Gacha system to spend your hard-earned coins.
 
 ### 2. ✨ Gacha System (Summoning)
