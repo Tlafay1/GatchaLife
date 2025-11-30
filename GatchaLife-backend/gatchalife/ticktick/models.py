@@ -12,6 +12,7 @@ class TickTickProject(models.Model):
 
     class Meta:
         db_table = 'projects'
+        managed = False
 
     def __str__(self):
         return self.name
@@ -25,6 +26,7 @@ class TickTickColumn(models.Model):
 
     class Meta:
         db_table = 'columns'
+        managed = False
 
     def __str__(self):
         return self.name
@@ -53,6 +55,7 @@ class TickTickTask(models.Model):
 
     class Meta:
         db_table = 'tasks'
+        managed = False
 
     def __str__(self):
         return self.title

@@ -49,7 +49,7 @@ class PlayerViewSet(viewsets.ModelViewSet):
         completed_tasks = TickTickTask.objects.filter(status=2)
         
         # Filter out already processed tasks
-        processed_ids = ProcessedTask.objects.values_list('task_id', flat=True)
+        processed_ids = list(ProcessedTask.objects.values_list('task_id', flat=True))
         new_tasks = completed_tasks.exclude(id__in=processed_ids)
         
         tasks_processed_count = 0

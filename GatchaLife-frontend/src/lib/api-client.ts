@@ -256,3 +256,12 @@ export const useGatchaRoll = () => {
     },
   });
 };
+
+export const useTickTickStats = () => useQuery({
+  queryKey: ['ticktick-stats'],
+  queryFn: async () => {
+    const response = await fetch(`${OpenAPI.BASE}/ticktick/stats/`);
+    if (!response.ok) throw new Error('Failed to fetch stats');
+    return response.json();
+  },
+});

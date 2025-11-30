@@ -102,8 +102,18 @@ DATABASES = {
         "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "postgres"),
         "HOST": os.environ.get("POSTGRES_HOST", "gatchalife-db"),
         "PORT": os.environ.get("POSTGRES_PORT", "5432"),
+    },
+    "ticktick": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": "ticktick", # As specified by user
+        "USER": os.environ.get("POSTGRES_USER", "postgres"),
+        "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "postgres"),
+        "HOST": os.environ.get("POSTGRES_HOST", "gatchalife-db"),
+        "PORT": os.environ.get("POSTGRES_PORT", "5432"),
     }
 }
+
+DATABASE_ROUTERS = ['gatchalife.db_routers.TickTickRouter']
 
 STATIC_URL = "/static/"
 MEDIA_URL = "/images/"

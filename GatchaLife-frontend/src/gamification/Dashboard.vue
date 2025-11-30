@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { usePlayerStats, useSyncTickTick, useGatchaRoll } from '@/lib/api-client';
+import { usePlayerStats, useSyncTickTick, useGatchaRoll, useTickTickStats } from '@/lib/api-client';
 import { ref } from 'vue';
 import GatchaAnimation from './GatchaAnimation.vue';
 
 const { data: player, refetch: refetchPlayer } = usePlayerStats();
 const { mutate: syncTickTick, isPending: isSyncing } = useSyncTickTick();
 const { mutate: rollGatcha, isPending: isRolling } = useGatchaRoll();
+const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useTickTickStats();
 
 const showGatcha = ref(false);
 const dropData = ref(null);
@@ -15,6 +16,8 @@ const handleSync = () => {
     onSuccess: (data) => {
       // Show some notification about XP gained
       console.log('Synced!', data);
+      refetchPlayer();
+      refetchStats();
     }
   });
 };
@@ -113,6 +116,50 @@ const closeGatcha = () => {
             <span v-if="isRolling" class="animate-spin mr-2">↻</span>
             {{ isRolling ? 'Summoning...' : 'Summon (100 Coins)' }}
           </button>
+        </div>
+      </div>
+
+      <!-- Productivity Stats -->
+      <div class="bg-card border border-border rounded-xl p-6 shadow-lg space-y-6">
+        <h2 class="text-xl font-bold flex items-center gap-2">
+          <span class="i-lucide-bar-chart-2 text-blue-500"></span>
+          Productivity Stats
+        </h2>
+        
+        <div v-if="statsLoading" class="text-center py-8 text-muted-foreground">Loading stats...</div>
+        <div v-else class="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <!-- Stat Cards -->
+          <div class="space-y-6 col-span-1">
+            <div class="bg-background/50 rounded-lg p-4 border border-border">
+              <div class="text-sm text-muted-foreground uppercase tracking-wider mb-1">Tasks Today</div>
+              <div class="text-3xl font-bold text-green-500">{{ stats?.rewarded_today || 0 }}</div>
+            </div>
+            <div class="bg-background/50 rounded-lg p-4 border border-border">
+              <div class="text-sm text-muted-foreground uppercase tracking-wider mb-1">Total Completed</div>
+              <div class="text-3xl font-bold text-blue-500">{{ stats?.total_completed_all_time || 0 }}</div>
+            </div>
+          </div>
+
+          <!-- Recent Activity -->
+          <div class="col-span-1 md:col-span-2">
+            <h3 class="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">Recent Rewards</h3>
+            <div class="space-y-3">
+              <div v-for="task in stats?.recent_activity" :key="task.id" 
+                class="flex items-center justify-between bg-background/30 p-3 rounded-lg border border-border/50">
+                <div>
+                  <div class="font-medium truncate max-w-[200px] sm:max-w-xs">{{ task.title }}</div>
+                  <div class="text-xs text-muted-foreground">{{ new Date(task.processed_at).toLocaleString() }}</div>
+                </div>
+                <div class="flex items-center gap-2 text-xs font-bold text-green-500">
+                  <span>+10 XP</span>
+                  <span>+5 Coins</span>
+                </div>
+              </div>
+              <div v-if="!stats?.recent_activity?.length" class="text-muted-foreground text-sm italic">
+                No recent activity. Sync tasks to see them here!
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
