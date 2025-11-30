@@ -12,6 +12,9 @@ CMD ["npm", "run", "dev", "--", "--host"]
 
 # Stage 3: Builder
 FROM base AS builder
+
+ARG VITE_API_BASE_URL
+
 COPY . .
 RUN npm run build
 

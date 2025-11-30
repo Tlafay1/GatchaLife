@@ -1,13 +1,13 @@
 services:
   backend:
-    build: 
-      context: .
-      dockerfile: ./GatchaLife-backend/Dockerfile
+    build:
+      context: ./GatchaLife-backend
+      dockerfile: Dockerfile
     container_name: gatchalife-backend
     restart: unless-stopped
     networks:
       - proxy-network
-      - postgres-network
+      - gatchalife-network
     environment:
       - POSTGRES_HOST=postgres
       - POSTGRES_DB=gatchalife
@@ -25,8 +25,10 @@ services:
 
   frontend:
     build:
-      context: .
-      dockerfile: ./GatchaLife-frontend/Dockerfile
+      context: ./GatchaLife-frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_BASE_URL=https://gatcha.tlafay.fr/api
     container_name: gatchalife-frontend
     restart: unless-stopped
     networks:
@@ -39,8 +41,10 @@ services:
 networks:
   proxy-network:
     external: true
-  postgres-network:
+    name: services_proxy-network  # <--- ADD THIS LINE mapping
+  gatchalife-network:
     external: true
+    name: services_gatchalife        # <--- ADD THIS (See explanation below)
 
 volumes:
   static_volume:
