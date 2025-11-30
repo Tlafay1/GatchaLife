@@ -1,4 +1,4 @@
-import { OpenAPI, SeriesService, CharactersService, VariantsService, VariantImagesService } from '@/api';
+import { OpenAPI, SeriesService, CharactersService, VariantsService, VariantImagesService, StylesService, ThemesService, RaritiesService } from '@/api';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query';
 
 // Configure the base URL for the API client
@@ -149,6 +149,94 @@ export const useDeleteVariantImage = () => {
     mutationFn: (id: number) => VariantImagesService.variantImagesDelete(id),
     onSuccess: () => {
       // Invalidation will be handled by the calling component
+    },
+  });
+};
+
+// --- Rarities ---
+export const useRaritiesList = () => useQuery({
+  queryKey: ['rarities'],
+  queryFn: () => RaritiesService.raritiesList(),
+});
+
+// --- Styles ---
+export const useStylesList = () => useQuery({
+  queryKey: ['styles'],
+  queryFn: () => StylesService.stylesList(),
+});
+
+export const useCreateStyle = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: StylesService.stylesCreate,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['styles'] });
+    },
+  });
+};
+
+export const useUpdateStyle = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: number, name: string, style_keywords?: string, composition_hint?: string, rarity: number }) =>
+      StylesService.stylesUpdate(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['styles'] });
+    },
+  });
+};
+
+export const useDeleteStyle = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => StylesService.stylesDelete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['styles'] });
+    },
+  });
+};
+
+// --- Themes ---
+export const useThemesList = () => useQuery({
+  queryKey: ['themes'],
+  queryFn: () => ThemesService.themesList(),
+});
+
+export const useCreateTheme = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ThemesService.themesCreate,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['themes'] });
+    },
+  });
+};
+
+export const useUpdateTheme = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }: {
+      id: number,
+      name: string,
+      category?: string,
+      ambiance?: string,
+      keywords_theme?: string,
+      prompt_background?: string,
+      integration_idea?: string
+    }) =>
+      ThemesService.themesUpdate(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['themes'] });
+    },
+  });
+};
+
+export const useDeleteTheme = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => ThemesService.themesDelete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['themes'] });
     },
   });
 };

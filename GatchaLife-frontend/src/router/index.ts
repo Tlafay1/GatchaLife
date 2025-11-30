@@ -16,7 +16,12 @@ const router = createRouter({
     {
       path: '/collection/:id',
       name: 'card-details',
-      component: () => import('@/gamification/CardDetails.vue')
+      component: () => import('../gamification/CardDetails.vue')
+    },
+    {
+      path: '/studio',
+      name: 'creator-studio',
+      component: () => import('../gamification/CreatorStudio.vue')
     },
     {
       path: '/characters',

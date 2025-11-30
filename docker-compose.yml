@@ -60,6 +60,4 @@ volumes:
 
 networks:
   proxy-network:
-    external: true
   postgres-network:
-    external: true
