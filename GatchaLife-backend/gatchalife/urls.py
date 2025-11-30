@@ -16,7 +16,6 @@ from gatchalife.character.views import (
 from gatchalife.generated_image.views import GeneratedImageViewSet
 
 from gatchalife.style.views import StyleViewSet, RarityViewSet, ThemeViewSet
-from gatchalife.ticktick.views import TickTickViewSet
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -40,11 +39,11 @@ router.register(r'generated-images', GeneratedImageViewSet) # /api/generated-ima
 router.register(r'styles', StyleViewSet)               # /api/styles/
 router.register(r'rarities', RarityViewSet)           # /api/rarities/
 router.register(r'themes', ThemeViewSet)               # /api/themes/
-router.register(r'ticktick', TickTickViewSet, basename='ticktick') # /api/ticktick/
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("gamification/", include("gatchalife.gamification.urls")),
+    path("ticktick/", include("gatchalife.ticktick.urls")),
     path("", include(router.urls)),
     path(
         "apidocs.<format>/", schema_view.without_ui(cache_timeout=0), name="schema-json"

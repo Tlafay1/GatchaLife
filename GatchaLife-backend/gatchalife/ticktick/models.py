@@ -66,6 +66,7 @@ class ProcessedTask(models.Model):
     Tracks which tasks have already rewarded the player.
     """
     task_id = models.CharField(max_length=255, unique=True)
+    task_title = models.CharField(max_length=1024, blank=True, null=True)
     processed_at = models.DateTimeField(auto_now_add=True)
     # We could link to Player, but since it's single player, it's implicit.
     

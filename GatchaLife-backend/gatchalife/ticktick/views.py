@@ -1,9 +1,10 @@
 from rest_framework import viewsets, permissions
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
+from rest_framework import status as http_status
 from django.utils import timezone
-from datetime import timedelta
-from .models import TickTickTask, ProcessedTask, TickTickProject
+from django.views.decorators.csrf import csrf_exempt
+from .models import TickTickTask, ProcessedTask, TickTickProject, TickTickColumn
 
 class TickTickViewSet(viewsets.ViewSet):
     permission_classes = [permissions.AllowAny] # For now, as per project settings
@@ -11,45 +12,103 @@ class TickTickViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['get'])
     def stats(self, request):
         # Total completed tasks (status 2)
-        total_completed = TickTickTask.objects.filter(status=2).count()
-        
-        # Tasks completed today (using last_synced_at as a proxy for now, or we need a completed_at field if n8n provides it)
-        # The n8n schema has 'completedTime' removed? Let's check models.py again.
-        # In models.py, completedTime was removed from the schema in the n8n JSON but let's check if I put it in the model.
-        # I did NOT put completedTime in the model. I only have last_synced_at.
-        # However, ProcessedTask has processed_at. We can use that for "Tasks Rewarded Today".
+        total_completed = ProcessedTask.objects.count()  # All rewarded tasks
         
         today = timezone.now().date()
         processed_today = ProcessedTask.objects.filter(processed_at__date=today).count()
         total_processed = ProcessedTask.objects.count()
         
-        # Recent tasks (from ProcessedTask joined with TickTickTask)
+        # Recent tasks (from ProcessedTask)
         recent_processed = ProcessedTask.objects.order_by('-processed_at')[:5]
-        
-        # Since ProcessedTask only has task_id (string), we can't easily select_related.
-        # We have to fetch the IDs and then query TickTickTask.
-        recent_ids = [p.task_id for p in recent_processed]
-        # Fetch tasks, preserving order is tricky with IN clause, so we map them in python
-        tasks_map = {t.id: t for t in TickTickTask.objects.filter(id__in=recent_ids)}
         
         recent_activity = []
         for p in recent_processed:
-            task = tasks_map.get(p.task_id)
-            if task:
-                recent_activity.append({
-                    'id': task.id,
-                    'title': task.title,
-                    'project': task.projectId, # We could fetch project name too
-                    'processed_at': p.processed_at
-                })
+            recent_activity.append({
+                'id': p.task_id,
+                'title': p.task_title or f"Task {p.task_id}",
+                'project': None,
+                'processed_at': p.processed_at
+            })
                 
-        # Project breakdown (top 5 projects by completed tasks)
-        # This is harder without a direct FK. 
-        # Let's just return simple stats for now.
-        
         return Response({
             'total_completed_all_time': total_completed,
             'rewarded_total': total_processed,
             'rewarded_today': processed_today,
             'recent_activity': recent_activity
         })
+
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([permissions.AllowAny])
+def zapier_webhook(request):
+    """
+    Webhook endpoint for Zapier to call when a task is completed.
+    
+    Expected payload:
+    {
+        "task_id": "string",
+        "title": "string",
+        "project_id": "string" (optional),
+        "completed_at": "ISO datetime" (optional)
+    }
+    """
+    from gatchalife.gamification.models import Player
+    from django.contrib.auth.models import User
+    
+    # Get task data from Zapier
+    task_id = request.data.get('task_id') or request.data.get('id')
+    title = request.data.get('title', 'Unknown Task')
+    
+    if not task_id:
+        return Response({
+            'error': 'task_id is required'
+        }, status=http_status.HTTP_400_BAD_REQUEST)
+    
+    # Check if we've already processed this task
+    if ProcessedTask.objects.filter(task_id=task_id).exists():
+        return Response({
+            'status': 'already_processed',
+            'message': f'Task {task_id} has already been rewarded'
+        }, status=http_status.HTTP_200_OK)
+    
+    # Get the default player
+    user = User.objects.first()
+    if not user:
+        user = User.objects.create(username='Player1')
+    player, _ = Player.objects.get_or_create(user=user)
+    
+    # Award rewards
+    xp_gain = 10
+    currency_gain = 5
+    
+    player.xp += xp_gain
+    player.gatcha_coins += currency_gain
+    
+    # Level up logic
+    xp_needed = player.level * 100
+    levels_gained = 0
+    while player.xp >= xp_needed:
+        player.level += 1
+        levels_gained += 1
+        player.xp -= xp_needed
+        player.gatcha_coins += 50  # Level up bonus
+        xp_needed = player.level * 100
+    
+    player.save()
+    
+    # Create ProcessedTask record
+    ProcessedTask.objects.create(
+        task_id=task_id,
+        task_title=title
+    )
+    
+    return Response({
+        'status': 'success',
+        'task_id': task_id,
+        'xp_gained': xp_gain,
+        'currency_gained': currency_gain,
+        'levels_gained': levels_gained,
+        'new_level': player.level,
+        'current_xp': player.xp,
+        'current_currency': player.gatcha_coins
+    }, status=http_status.HTTP_201_CREATED)
