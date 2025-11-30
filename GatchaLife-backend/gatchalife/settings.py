@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     "gatchalife.generated_image",
     "gatchalife.style",
     "gatchalife.gamification",
+    "gatchalife.ticktick",
 ]
 
 MIDDLEWARE = [

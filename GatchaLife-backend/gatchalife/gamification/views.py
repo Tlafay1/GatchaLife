@@ -27,30 +27,68 @@ class PlayerViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'])
     def sync_ticktick(self, request):
-        # Placeholder for TickTick sync logic
-        # In a real implementation, this would fetch tasks from TickTick API
-        # For now, we can simulate completing a task
         player = self.get_object()
-        tasks_completed = request.data.get('tasks_completed', 1)
         
-        xp_gain = tasks_completed * 10
-        currency_gain = tasks_completed * 5
+        # 1. Trigger n8n webhook to refresh data (optional, fire and forget)
+        try:
+            # We use a timeout so we don't block the response too long if n8n is slow
+            # Ideally this should be a celery task
+            import requests
+            from django.conf import settings
+            n8n_url = f"{settings.N8N_BASE_URL}/{settings.N8N_WORKFLOW_WEBHOOK_PATH}/sync-ticktick"
+            # We don't wait for the full execution, just the trigger
+            print(f"Triggering n8n sync: {n8n_url}")
+            requests.post(n8n_url, json={}, timeout=1)
+        except Exception as e:
+            print(f"Failed to trigger n8n sync: {e}")
+
+        # 2. Query for new completed tasks
+        from gatchalife.ticktick.models import TickTickTask, ProcessedTask
         
-        player.xp += xp_gain
-        player.gatcha_coins += currency_gain
+        # Get all completed tasks (status 2 = completed usually)
+        completed_tasks = TickTickTask.objects.filter(status=2)
         
-        # Level up logic (simple: level * 100 xp required)
-        xp_needed = player.level * 100
-        if player.xp >= xp_needed:
-            player.level += 1
-            player.xp -= xp_needed
-            # Bonus currency for leveling up
-            player.gatcha_coins += 50
+        # Filter out already processed tasks
+        processed_ids = ProcessedTask.objects.values_list('task_id', flat=True)
+        new_tasks = completed_tasks.exclude(id__in=processed_ids)
+        
+        tasks_processed_count = 0
+        xp_gain = 0
+        currency_gain = 0
+        
+        new_processed_records = []
+        
+        for task in new_tasks:
+            tasks_processed_count += 1
+            # Base reward
+            xp_gain += 10
+            currency_gain += 5
             
-        player.save()
+            # Prepare record
+            new_processed_records.append(ProcessedTask(task_id=task.id))
+            
+        # Bulk create processed records
+        if new_processed_records:
+            ProcessedTask.objects.bulk_create(new_processed_records)
+        
+        # Update Player
+        if tasks_processed_count > 0:
+            player.xp += xp_gain
+            player.gatcha_coins += currency_gain
+            
+            # Level up logic
+            xp_needed = player.level * 100
+            while player.xp >= xp_needed: # Use while in case multiple levels gained
+                player.level += 1
+                player.xp -= xp_needed
+                player.gatcha_coins += 50 # Level up bonus
+                xp_needed = player.level * 100
+                
+            player.save()
         
         return Response({
             'status': 'synced',
+            'tasks_processed': tasks_processed_count,
             'xp_gained': xp_gain,
             'currency_gained': currency_gain,
             'new_level': player.level,
