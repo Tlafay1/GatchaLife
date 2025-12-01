@@ -9,6 +9,8 @@ class Player(models.Model):
     xp = models.PositiveIntegerField(default=0)
     gatcha_coins = models.PositiveIntegerField(default=0)
     ticktick_api_key = models.CharField(max_length=255, blank=True, null=True)
+    last_activity_date = models.DateTimeField(null=True, blank=True)
+    current_streak = models.PositiveIntegerField(default=0)
 
     def __str__(self):
         return f"{self.user.username} (Lvl {self.level})"

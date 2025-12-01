@@ -1,4 +1,6 @@
 import json
+import random
+from datetime import timedelta
 from rest_framework import viewsets, permissions
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
@@ -84,9 +86,42 @@ def zapier_webhook(request):
         user = User.objects.create(username='Player1')
     player, _ = Player.objects.get_or_create(user=user)
     
-    # Award rewards
-    xp_gain = 10
-    currency_gain = 5
+    # 1. Gestion du Streak et du Bonus Quotidien
+    now = timezone.now()
+    today = now.date()
+    daily_bonus = 0
+
+    if player.last_activity_date:
+        last_date = player.last_activity_date.date()
+        if last_date < today:
+            # C'est la première tâche de la journée !
+            daily_bonus = 50  # Gros boost : la moitié d'une carte offerte
+            
+            if last_date == today - timedelta(days=1):
+                player.current_streak += 1
+            else:
+                player.current_streak = 1 # Reset si jour raté
+    else:
+        # Tout premier jour
+        daily_bonus = 100 # Premier shoot gratuit (Onboarding)
+        player.current_streak = 1
+
+    player.last_activity_date = now
+
+    # 2. Calcul de la récompense variable (Skinner Box)
+    # Base entre 15 et 25 (au lieu de 5)
+    base_currency = random.randint(15, 25)
+
+    # 3. Multiplicateur de Streak (Max x1.5)
+    streak_multiplier = 1 + min(player.current_streak * 0.05, 0.5)
+
+    # 4. Critique / Jackpot (10% de chance de x3)
+    is_crit = random.random() < 0.10
+    crit_multiplier = 3 if is_crit else 1
+
+    # Calcul Final
+    currency_gain = int((base_currency * streak_multiplier * crit_multiplier) + daily_bonus)
+    xp_gain = int(currency_gain * 0.5) # L'XP suit la monnaie
     
     player.xp += xp_gain
     player.gatcha_coins += currency_gain
@@ -113,8 +148,14 @@ def zapier_webhook(request):
         'status': 'success',
         'task_id': task_id,
         'task_name': title,
-        'xp_gained': xp_gain,
-        'currency_gained': currency_gain,
+        'reward_details': {
+            'base': base_currency,
+            'daily_bonus': daily_bonus,
+            'streak_bonus': streak_multiplier,
+            'is_crit': is_crit,
+            'total_coins': currency_gain,
+            'xp_gain': xp_gain
+        },
         'levels_gained': levels_gained,
         'new_level': player.level,
         'current_xp': player.xp,
