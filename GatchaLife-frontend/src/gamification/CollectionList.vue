@@ -1,12 +1,46 @@
 <script setup lang="ts">
-import { useCollection } from '@/lib/api-client';
+import {
+  useCollection,
+  useThemesList,
+  useStylesList,
+  useSeriesList,
+  useRaritiesList
+} from '@/lib/api-client';
 import { ref } from 'vue';
+import { Search, FilterX } from 'lucide-vue-next';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const filters = ref({
   rarity: '',
+  theme: '',
+  style: '',
+  series: '',
+  character: '', // Search by name
 });
 
 const { data: collection, isLoading } = useCollection(filters);
+const { data: themes } = useThemesList();
+const { data: styles } = useStylesList();
+const { data: series } = useSeriesList();
+const { data: rarities } = useRaritiesList();
+
+const resetFilters = () => {
+  filters.value = {
+    rarity: '',
+    theme: '',
+    style: '',
+    series: '',
+    character: '',
+  };
+};
 
 const rarityColor = (rarity: string) => {
   switch (rarity?.toLowerCase()) {
@@ -20,26 +54,87 @@ const rarityColor = (rarity: string) => {
 
 <template>
   <div class="min-h-screen bg-background text-foreground p-8 font-sans">
-    <div class="max-w-6xl mx-auto space-y-8">
+    <div class="max-w-7xl mx-auto space-y-8">
       <!-- Header -->
-      <div class="flex items-center justify-between">
-        <h1 class="text-3xl font-bold">Collection</h1>
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 class="text-3xl font-bold">My Collection</h1>
+          <p class="text-muted-foreground">Manage and view your collected cards</p>
+        </div>
         <router-link to="/" class="text-muted-foreground hover:text-foreground transition-colors">
           ← Back to Dashboard
         </router-link>
       </div>
 
-      <!-- Filters -->
-      <div class="flex gap-4 overflow-x-auto pb-2">
-        <button @click="filters.rarity = ''" class="px-4 py-2 rounded-full border transition-colors"
-          :class="!filters.rarity ? 'bg-primary text-primary-foreground border-primary' : 'bg-card border-border hover:border-primary/50'">
-          All
-        </button>
-        <button v-for="r in ['Common', 'Rare', 'Legendary']" :key="r" @click="filters.rarity = r"
-          class="px-4 py-2 rounded-full border transition-colors"
-          :class="filters.rarity === r ? 'bg-primary text-primary-foreground border-primary' : 'bg-card border-border hover:border-primary/50'">
-          {{ r }}
-        </button>
+      <!-- Advanced Filters -->
+      <div class="bg-card border border-border rounded-xl p-4 space-y-4">
+        <div class="flex flex-col md:flex-row gap-4">
+          <!-- Search -->
+          <div class="relative flex-1">
+            <Search class="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+            <Input v-model="filters.character" placeholder="Search characters..." class="pl-9" />
+          </div>
+
+          <!-- Reset -->
+          <Button variant="outline" @click="resetFilters" class="shrink-0">
+            <FilterX class="w-4 h-4 mr-2" />
+            Reset Filters
+          </Button>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <!-- Rarity -->
+          <Select v-model="filters.rarity">
+            <SelectTrigger>
+              <SelectValue placeholder="Rarity" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Rarities</SelectItem>
+              <SelectItem v-for="r in rarities" :key="r.id" :value="r.name">
+                {{ r.name }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+
+          <!-- Theme -->
+          <Select v-model="filters.theme">
+            <SelectTrigger>
+              <SelectValue placeholder="Theme" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Themes</SelectItem>
+              <SelectItem v-for="t in themes" :key="t.id" :value="t.name">
+                {{ t.name }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+
+          <!-- Style -->
+          <Select v-model="filters.style">
+            <SelectTrigger>
+              <SelectValue placeholder="Style" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Styles</SelectItem>
+              <SelectItem v-for="s in styles" :key="s.id" :value="s.name">
+                {{ s.name }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+
+          <!-- Series -->
+          <Select v-model="filters.series">
+            <SelectTrigger>
+              <SelectValue placeholder="Series" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Series</SelectItem>
+              <SelectItem v-for="s in series" :key="s.id" :value="s.name">
+                {{ s.name }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <!-- Grid -->

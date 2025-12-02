@@ -54,10 +54,32 @@ class CollectionViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         player = get_default_player()
         queryset = UserCard.objects.filter(player=player)
+        return queryset
+            
+        return queryset
+
+    def filter_queryset(self, queryset):
+        queryset = super().filter_queryset(queryset)
         
         rarity = self.request.query_params.get('rarity')
         if rarity:
             queryset = queryset.filter(card__rarity__name=rarity)
+            
+        theme = self.request.query_params.get('theme')
+        if theme:
+            queryset = queryset.filter(card__theme__name=theme)
+            
+        character = self.request.query_params.get('character')
+        if character:
+            queryset = queryset.filter(card__character_variant__character__name__icontains=character)
+            
+        style = self.request.query_params.get('style')
+        if style:
+            queryset = queryset.filter(card__style__name=style)
+            
+        series = self.request.query_params.get('series')
+        if series:
+            queryset = queryset.filter(card__character_variant__character__series__name=series)
             
         return queryset
 

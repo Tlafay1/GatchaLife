@@ -68,7 +68,19 @@ class ProcessedTask(models.Model):
     task_id = models.CharField(max_length=255, unique=True)
     task_title = models.CharField(max_length=1024, blank=True, null=True)
     processed_at = models.DateTimeField(auto_now_add=True)
-    # We could link to Player, but since it's single player, it's implicit.
     
+    # Reward Details
+    xp_gain = models.IntegerField(default=0)
+    coin_gain = models.IntegerField(default=0)
+    
+    # "Why" Breakdown
+    difficulty = models.CharField(max_length=50, default='easy') # easy, medium, hard, extreme
+    is_crit = models.BooleanField(default=False)
+    crit_multiplier = models.FloatField(default=1.0)
+    base_reward = models.IntegerField(default=0)
+    streak_multiplier = models.FloatField(default=1.0)
+    daily_bonus = models.IntegerField(default=0)
+    tags = models.TextField(blank=True, null=True)
+
     def __str__(self):
-        return f"Processed {self.task_id}"
+        return f"Processed {self.task_id} (+{self.coin_gain} coins)"
