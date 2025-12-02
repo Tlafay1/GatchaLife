@@ -64,6 +64,14 @@ const closeGatcha = () => {
   dropData.value = null;
   refetchPlayer();
 };
+const getDifficultyColor = (difficulty: string) => {
+  switch (difficulty?.toLowerCase()) {
+    case 'extreme': return 'bg-red-500/10 text-red-500 border-red-500/20';
+    case 'hard': return 'bg-orange-500/10 text-orange-500 border-orange-500/20';
+    case 'medium': return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
+    default: return 'bg-green-500/10 text-green-500 border-green-500/20';
+  }
+};
 </script>
 
 <template>
@@ -273,10 +281,33 @@ const closeGatcha = () => {
 }}</div>
                   <div class="text-xs text-muted-foreground">{{ new Date(task.processed_at).toLocaleTimeString([],
                     { hour: '2-digit', minute: '2-digit' }) }}</div>
-                  <div
-                    class="inline-flex items-center gap-1.5 text-xs font-bold text-green-600 bg-green-500/10 px-2 py-0.5 rounded-md mt-1">
-                    <PlusCircle class="w-3 h-3" />
-                    10 XP
+                  
+                  <div class="flex flex-wrap gap-2 mt-1">
+                    <!-- XP Badge -->
+                    <div class="inline-flex items-center gap-1.5 text-xs font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md border border-blue-500/20">
+                      <PlusCircle class="w-3 h-3" />
+                      {{ task.xp_gain || '?' }} XP
+                    </div>
+                    
+                    <!-- Coins Badge -->
+                    <div class="inline-flex items-center gap-1.5 text-xs font-bold text-yellow-500 bg-yellow-500/10 px-2 py-0.5 rounded-md border border-yellow-500/20">
+                      <Coins class="w-3 h-3" />
+                      {{ task.coin_gain || '?' }}
+                    </div>
+
+                    <!-- Difficulty Badge -->
+                    <div v-if="task.difficulty" 
+                         class="inline-flex items-center gap-1.5 text-xs font-bold px-2 py-0.5 rounded-md border capitalize"
+                         :class="getDifficultyColor(task.difficulty)">
+                      {{ task.difficulty }}
+                    </div>
+
+                    <!-- Crit Badge -->
+                    <div v-if="task.is_crit" 
+                         class="inline-flex items-center gap-1.5 text-xs font-black text-purple-500 bg-purple-500/10 px-2 py-0.5 rounded-md border border-purple-500/20 animate-pulse">
+                      <Sparkles class="w-3 h-3" />
+                      CRIT!
+                    </div>
                   </div>
                 </div>
               </div>
@@ -288,6 +319,12 @@ const closeGatcha = () => {
               </div>
               <p>No tasks completed yet.</p>
               <p class="text-sm mt-2">Sync TickTick to get started!</p>
+            </div>
+            
+            <div class="mt-6 pt-4 border-t border-border text-center">
+              <router-link to="/history" class="text-sm font-bold text-primary hover:underline">
+                View Full History →
+              </router-link>
             </div>
           </div>
         </div>

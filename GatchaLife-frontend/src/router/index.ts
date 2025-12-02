@@ -9,6 +9,11 @@ const router = createRouter({
       component: () => import('@/gamification/PlayerDashboard.vue')
     },
     {
+      path: '/history',
+      name: 'history',
+      component: () => import('@/gamification/HistoryView.vue')
+    },
+    {
       path: '/collection',
       name: 'collection',
       component: () => import('@/gamification/CollectionList.vue')

@@ -353,3 +353,21 @@ export const useTickTickStats = () => useQuery({
     return response.json();
   },
 });
+
+export const useTaskHistory = (page = 1, pageSize = 20) => useQuery({
+  queryKey: ['ticktick-history', page, pageSize],
+  queryFn: async () => {
+    const response = await fetch(`${OpenAPI.BASE}/ticktick/history/?page=${page}&page_size=${pageSize}`);
+    if (!response.ok) throw new Error('Failed to fetch history');
+    return response.json();
+  },
+});
+
+export const useProgressionStats = () => useQuery({
+  queryKey: ['ticktick-progression'],
+  queryFn: async () => {
+    const response = await fetch(`${OpenAPI.BASE}/ticktick/progression/`);
+    if (!response.ok) throw new Error('Failed to fetch progression');
+    return response.json();
+  },
+});
