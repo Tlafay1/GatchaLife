@@ -8,6 +8,9 @@ from .serializers import PlayerSerializer, QuestSerializer, PlayerQuestSerialize
 from gatchalife.character.models import CharacterVariant
 from gatchalife.style.models import Rarity, Style, Theme
 import random
+import structlog
+
+logger = structlog.get_logger(__name__)
 
 def get_default_player():
     # Get the first user or create a default one
@@ -178,7 +181,7 @@ class GatchaViewSet(viewsets.ViewSet):
             except Exception as e:
                 # If generation fails, we might still want to give the card, but maybe log error
                 # For now, let's just print it and continue, the card will have no image
-                print(f"Image generation failed: {e}")
+                logger.error("image_generation_failed", error=str(e))
 
         # 4. Get or Create Card
         card, created = Card.objects.get_or_create(

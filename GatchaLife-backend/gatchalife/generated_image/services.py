@@ -3,6 +3,9 @@ from io import BytesIO
 import base64
 import mimetypes
 from django.conf import settings
+import structlog
+
+logger = structlog.get_logger(__name__)
 
 from .models import GeneratedImage
 from gatchalife.character.models import CharacterVariant
@@ -56,11 +59,7 @@ def generate_image(character_variant: CharacterVariant, rarity: Rarity, style: S
         "theme": ThemeSerializer(theme).data,
     }
 
-    print(payload)
-
     response = requests.post(n8n_url, json=payload)
-
-    print(response)
 
     response.raise_for_status()
 
