@@ -6,8 +6,8 @@ import {
   useSeriesList,
   useRaritiesList
 } from '@/lib/api-client';
-import { ref } from 'vue';
-import { Search, FilterX } from 'lucide-vue-next';
+import { ref, computed } from 'vue';
+import { Search, FilterX, SlidersHorizontal, ChevronDown, ChevronUp } from 'lucide-vue-next';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,14 +19,27 @@ import {
 } from '@/components/ui/select';
 
 const filters = ref({
-  rarity: '',
-  theme: '',
-  style: '',
-  series: '',
+  rarity: 'all',
+  theme: 'all',
+  style: 'all',
+  series: 'all',
   character: '', // Search by name
 });
 
-const { data: collection, isLoading } = useCollection(filters);
+const groupBy = ref('series'); // Default group by
+const isFiltersOpen = ref(false); // Minimized by default
+
+// Transform "all" to empty string for API
+const apiFilters = computed(() => {
+  const f = { ...filters.value };
+  if (f.rarity === 'all') f.rarity = '';
+  if (f.theme === 'all') f.theme = '';
+  if (f.style === 'all') f.style = '';
+  if (f.series === 'all') f.series = '';
+  return f;
+});
+
+const { data: collection, isLoading } = useCollection(apiFilters);
 const { data: themes } = useThemesList();
 const { data: styles } = useStylesList();
 const { data: series } = useSeriesList();
@@ -34,13 +47,67 @@ const { data: rarities } = useRaritiesList();
 
 const resetFilters = () => {
   filters.value = {
-    rarity: '',
-    theme: '',
-    style: '',
-    series: '',
+    rarity: 'all',
+    theme: 'all',
+    style: 'all',
+    series: 'all',
     character: '',
   };
+  groupBy.value = 'series';
 };
+
+const groupedCollection = computed(() => {
+  if (!collection.value) return {};
+
+  if (groupBy.value === 'none') {
+    return { 'All Cards': collection.value };
+  }
+
+  const groups: Record<string, any[]> = {};
+
+  collection.value.forEach((item: any) => {
+    let key = 'Other';
+    const card = item.card;
+
+    switch (groupBy.value) {
+      case 'series': key = card.series_name || 'Unknown Series'; break;
+      case 'rarity': key = card.rarity_name || 'Unknown Rarity'; break;
+      case 'theme': key = card.theme_name || 'Unknown Theme'; break;
+      case 'style': key = card.style_name || 'Unknown Style'; break;
+    }
+
+    if (!groups[key]) groups[key] = [];
+    const group = groups[key];
+    if (group) {
+      group.push(item);
+    }
+  });
+
+  // Sort keys
+  let keys = Object.keys(groups);
+
+  if (groupBy.value === 'rarity' && rarities.value) {
+    // Sort by rarity threshold descending (Legendary -> Common)
+    keys.sort((a, b) => {
+      const rA = rarities.value?.find((r: any) => r.name === a);
+      const rB = rarities.value?.find((r: any) => r.name === b);
+      // If rarity not found (e.g. "Other"), push to end
+      if (!rA) return 1;
+      if (!rB) return -1;
+      return rB.min_roll_threshold - rA.min_roll_threshold;
+    });
+  } else {
+    keys.sort();
+  }
+
+  return keys.reduce(
+    (obj, key) => {
+      obj[key] = groups[key] || [];
+      return obj;
+    },
+    {} as Record<string, any[]>
+  );
+});
 
 const rarityColor = (rarity: string) => {
   switch (rarity?.toLowerCase()) {
@@ -61,13 +128,20 @@ const rarityColor = (rarity: string) => {
           <h1 class="text-3xl font-bold">My Collection</h1>
           <p class="text-muted-foreground">Manage and view your collected cards</p>
         </div>
-        <router-link to="/" class="text-muted-foreground hover:text-foreground transition-colors">
-          ← Back to Dashboard
-        </router-link>
+        <div class="flex items-center gap-4">
+          <Button variant="outline" @click="isFiltersOpen = !isFiltersOpen">
+            <SlidersHorizontal class="w-4 h-4 mr-2" />
+            Filters & Sorting
+            <component :is="isFiltersOpen ? ChevronUp : ChevronDown" class="w-4 h-4 ml-2" />
+          </Button>
+          <router-link to="/" class="text-muted-foreground hover:text-foreground transition-colors">
+            ← Back to Dashboard
+          </router-link>
+        </div>
       </div>
 
-      <!-- Advanced Filters -->
-      <div class="bg-card border border-border rounded-xl p-4 space-y-4">
+      <!-- Advanced Filters (Collapsible) -->
+      <div v-if="isFiltersOpen" class="bg-card border border-border rounded-xl p-4 space-y-4">
         <div class="flex flex-col md:flex-row gap-4">
           <!-- Search -->
           <div class="relative flex-1">
@@ -75,14 +149,30 @@ const rarityColor = (rarity: string) => {
             <Input v-model="filters.character" placeholder="Search characters..." class="pl-9" />
           </div>
 
+          <!-- Group By -->
+          <div class="w-full md:w-48">
+            <Select v-model="groupBy">
+              <SelectTrigger>
+                <SelectValue placeholder="Group By" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No Grouping</SelectItem>
+                <SelectItem value="series">Series</SelectItem>
+                <SelectItem value="rarity">Rarity</SelectItem>
+                <SelectItem value="theme">Theme</SelectItem>
+                <SelectItem value="style">Style</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <!-- Reset -->
-          <Button variant="outline" @click="resetFilters" class="shrink-0">
+          <Button variant="ghost" @click="resetFilters" class="shrink-0 text-muted-foreground hover:text-destructive">
             <FilterX class="w-4 h-4 mr-2" />
-            Reset Filters
+            Reset
           </Button>
         </div>
 
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2 border-t border-border/50">
           <!-- Rarity -->
           <Select v-model="filters.rarity">
             <SelectTrigger>
@@ -137,7 +227,7 @@ const rarityColor = (rarity: string) => {
         </div>
       </div>
 
-      <!-- Grid -->
+      <!-- Grid with Groups -->
       <div v-if="isLoading" class="text-center py-12 text-muted-foreground">
         Loading collection...
       </div>
@@ -147,33 +237,45 @@ const rarityColor = (rarity: string) => {
         No cards found. Go summon some!
       </div>
 
-      <div v-else class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-        <router-link v-for="item in collection" :key="item.id" :to="`/collection/${item.id}`"
-          class="group relative aspect-[2/3] bg-card rounded-xl border-2 overflow-hidden transition-all hover:scale-105 hover:z-10 cursor-pointer block"
-          :class="rarityColor(item.card.rarity_name)">
-          <!-- Image -->
-          <div class="absolute inset-0 bg-muted">
-            <img v-if="item.card.image_url" :src="item.card.image_url"
-              class="w-full h-full object-cover transition-transform group-hover:scale-110" loading="lazy" />
-            <div v-else class="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
-              Generating...
-            </div>
+      <div v-else class="space-y-8">
+        <div v-for="(items, groupName) in groupedCollection" :key="groupName" class="space-y-4">
+          <!-- Group Header -->
+          <div v-if="groupBy !== 'none'" class="flex items-center gap-4">
+            <h2 class="text-xl font-bold">{{ groupName }}</h2>
+            <div class="h-px flex-1 bg-border"></div>
+            <span class="text-sm text-muted-foreground">{{ items.length }} cards</span>
           </div>
 
-          <!-- Overlay Info -->
-          <div
-            class="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/90 via-black/60 to-transparent pt-12 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end">
-            <div class="text-xs font-bold text-white/80 uppercase">{{ item.card.rarity_name }}</div>
-            <div class="font-bold text-white text-sm leading-tight">{{ item.card.character_variant_name }}</div>
-            <div class="text-xs text-white/60 mt-1">x{{ item.count }}</div>
-          </div>
+          <!-- Cards Grid -->
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+            <router-link v-for="item in items" :key="item.id" :to="`/collection/${item.id}`"
+              class="group relative aspect-[2/3] bg-card rounded-xl border-2 overflow-hidden transition-all hover:scale-105 hover:z-10 cursor-pointer block"
+              :class="rarityColor(item.card.rarity_name)">
+              <!-- Image -->
+              <div class="absolute inset-0 bg-muted">
+                <img v-if="item.card.image_url" :src="item.card.image_url"
+                  class="w-full h-full object-cover transition-transform group-hover:scale-110" loading="lazy" />
+                <div v-else class="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
+                  Generating...
+                </div>
+              </div>
 
-          <!-- Count Badge (always visible) -->
-          <div v-if="item.count > 1"
-            class="absolute top-2 right-2 bg-black/60 backdrop-blur text-white text-xs font-bold px-2 py-1 rounded-full border border-white/20">
-            x{{ item.count }}
+              <!-- Overlay Info -->
+              <div
+                class="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/90 via-black/60 to-transparent pt-12 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end">
+                <div class="text-xs font-bold text-white/80 uppercase">{{ item.card.rarity_name }}</div>
+                <div class="font-bold text-white text-sm leading-tight">{{ item.card.character_variant_name }}</div>
+                <div class="text-xs text-white/60 mt-1">x{{ item.count }}</div>
+              </div>
+
+              <!-- Count Badge (always visible) -->
+              <div v-if="item.count > 1"
+                class="absolute top-2 right-2 bg-black/60 backdrop-blur text-white text-xs font-bold px-2 py-1 rounded-full border border-white/20">
+                x{{ item.count }}
+              </div>
+            </router-link>
           </div>
-        </router-link>
+        </div>
       </div>
     </div>
   </div>

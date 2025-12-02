@@ -28,11 +28,12 @@ class CardSerializer(serializers.ModelSerializer):
     rarity_name = serializers.CharField(source='rarity.name', read_only=True)
     style_name = serializers.CharField(source='style.name', read_only=True)
     theme_name = serializers.CharField(source='theme.name', read_only=True)
+    series_name = serializers.CharField(source='character_variant.character.series.name', read_only=True)
     image_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Card
-        fields = ['id', 'character_variant', 'character_variant_name', 'character_name', 'rarity', 'rarity_name', 'style', 'style_name', 'theme', 'theme_name', 'image_url']
+        fields = ['id', 'character_variant', 'character_variant_name', 'character_name', 'series_name', 'rarity', 'rarity_name', 'style', 'style_name', 'theme', 'theme_name', 'image_url']
 
     def get_image_url(self, obj):
         # Logic to find the generated image for this card
