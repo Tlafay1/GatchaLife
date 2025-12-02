@@ -98,12 +98,12 @@ const chartOptions = {
 </script>
 
 <template>
-  <div class="min-h-screen bg-background text-foreground p-8 font-sans">
+  <div class="min-h-screen bg-background text-foreground p-4 md:p-8 font-sans">
     <div class="max-w-6xl mx-auto space-y-8">
       <!-- Header -->
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-4">
-          <router-link to="/">
+          <router-link to="/" class="hidden md:block">
             <Button variant="ghost" size="icon">
               <ArrowLeft class="w-5 h-5" />
             </Button>
@@ -124,17 +124,18 @@ const chartOptions = {
       <!-- History List -->
       <div class="space-y-4">
         <h2 class="text-xl font-bold">Task History</h2>
-        
+
         <div v-if="historyLoading" class="text-center py-12 text-muted-foreground">
           Loading history...
         </div>
 
         <div v-else class="space-y-4">
-          <div v-for="task in history?.results" :key="task.id" 
-               class="bg-card border border-border rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-primary/50 transition-colors group">
-            
+          <div v-for="task in history?.results" :key="task.id"
+            class="bg-card border border-border rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-primary/50 transition-colors group">
+
             <div class="space-y-1">
-              <div class="font-bold text-lg group-hover:text-primary transition-colors">{{ task.title || 'Unknown Task' }}</div>
+              <div class="font-bold text-lg group-hover:text-primary transition-colors">{{ task.title || 'Unknown Task'
+                }}</div>
               <div class="flex items-center gap-2 text-xs text-muted-foreground">
                 <Calendar class="w-3 h-3" />
                 {{ new Date(task.processed_at).toLocaleString() }}
@@ -146,50 +147,55 @@ const chartOptions = {
               <div class="group/tooltip relative">
                 <div class="flex flex-wrap gap-2 cursor-help">
                   <!-- XP Badge -->
-                  <div class="inline-flex items-center gap-1.5 text-sm font-bold text-blue-400 bg-blue-500/10 px-3 py-1 rounded-md border border-blue-500/20">
+                  <div
+                    class="inline-flex items-center gap-1.5 text-sm font-bold text-blue-400 bg-blue-500/10 px-3 py-1 rounded-md border border-blue-500/20">
                     <PlusCircle class="w-4 h-4" />
                     {{ task.xp_gain }} XP
                   </div>
-                  
+
                   <!-- Coins Badge -->
-                  <div class="inline-flex items-center gap-1.5 text-sm font-bold text-yellow-500 bg-yellow-500/10 px-3 py-1 rounded-md border border-yellow-500/20">
+                  <div
+                    class="inline-flex items-center gap-1.5 text-sm font-bold text-yellow-500 bg-yellow-500/10 px-3 py-1 rounded-md border border-yellow-500/20">
                     <Coins class="w-4 h-4" />
                     {{ task.coin_gain }}
                   </div>
 
                   <!-- Difficulty Badge -->
                   <div class="inline-flex items-center gap-1.5 text-sm font-bold px-3 py-1 rounded-md border capitalize"
-                       :class="getDifficultyColor(task.difficulty)">
+                    :class="getDifficultyColor(task.difficulty)">
                     {{ task.difficulty }}
                   </div>
 
                   <!-- Crit Badge -->
-                  <div v-if="task.is_crit" 
-                       class="inline-flex items-center gap-1.5 text-sm font-black text-purple-500 bg-purple-500/10 px-3 py-1 rounded-md border border-purple-500/20">
+                  <div v-if="task.is_crit"
+                    class="inline-flex items-center gap-1.5 text-sm font-black text-purple-500 bg-purple-500/10 px-3 py-1 rounded-md border border-purple-500/20">
                     <Sparkles class="w-4 h-4" />
                     CRIT!
                   </div>
                 </div>
 
                 <!-- Detailed Breakdown Tooltip -->
-                <div class="absolute bottom-full right-0 mb-2 w-64 p-3 bg-popover text-popover-foreground text-xs rounded-lg border border-border shadow-xl opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none z-50">
+                <div
+                  class="absolute bottom-full right-0 mb-2 w-64 p-3 bg-popover text-popover-foreground text-xs rounded-lg border border-border shadow-xl opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none z-50">
                   <div class="font-bold mb-2 border-b border-border/50 pb-1">Reward Breakdown</div>
                   <div class="grid grid-cols-2 gap-1">
                     <span class="text-muted-foreground">Base Reward:</span>
                     <span class="text-right">{{ task.base_reward }}</span>
-                    
+
                     <span class="text-muted-foreground">Difficulty:</span>
-                    <span class="text-right capitalize">{{ task.difficulty }} (x{{ task.difficulty === 'extreme' ? 3 : task.difficulty === 'hard' ? 2 : task.difficulty === 'medium' ? 1.5 : 1 }})</span>
-                    
+                    <span class="text-right capitalize">{{ task.difficulty }} (x{{ task.difficulty === 'extreme' ? 3 :
+                      task.difficulty === 'hard' ? 2 : task.difficulty === 'medium' ? 1.5 : 1 }})</span>
+
                     <span class="text-muted-foreground">Streak Bonus:</span>
                     <span class="text-right">x{{ task.streak_multiplier.toFixed(2) }}</span>
-                    
+
                     <span v-if="task.is_crit" class="text-purple-400 font-bold">Crit Multiplier:</span>
-                    <span v-if="task.is_crit" class="text-right text-purple-400 font-bold">x{{ task.crit_multiplier }}</span>
-                    
+                    <span v-if="task.is_crit" class="text-right text-purple-400 font-bold">x{{ task.crit_multiplier
+                      }}</span>
+
                     <span v-if="task.daily_bonus > 0" class="text-green-400">Daily Bonus:</span>
                     <span v-if="task.daily_bonus > 0" class="text-right text-green-400">+{{ task.daily_bonus }}</span>
-                    
+
                     <div class="col-span-2 border-t border-border/50 mt-1 pt-1 flex justify-between font-bold">
                       <span>Total Coins:</span>
                       <span class="text-yellow-500">{{ task.coin_gain }}</span>

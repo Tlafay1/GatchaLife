@@ -120,7 +120,7 @@ const rarityColor = (rarity: string) => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-background text-foreground p-8 font-sans">
+  <div class="min-h-screen bg-background text-foreground p-4 md:p-8 font-sans">
     <div class="max-w-7xl mx-auto space-y-8">
       <!-- Header -->
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -134,7 +134,7 @@ const rarityColor = (rarity: string) => {
             Filters & Sorting
             <component :is="isFiltersOpen ? ChevronUp : ChevronDown" class="w-4 h-4 ml-2" />
           </Button>
-          <router-link to="/" class="text-muted-foreground hover:text-foreground transition-colors">
+          <router-link to="/" class="hidden md:block text-muted-foreground hover:text-foreground transition-colors">
             ← Back to Dashboard
           </router-link>
         </div>

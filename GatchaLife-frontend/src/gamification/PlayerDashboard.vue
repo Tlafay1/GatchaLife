@@ -89,7 +89,7 @@ const getDifficultyColor = (difficulty: string) => {
 
         <div class="flex items-center gap-4">
           <router-link to="/studio"
-            class="p-2 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+            class="hidden md:flex p-2 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
             title="Creator Studio">
             <!-- Icon removed or replaced if needed, but PenTool was removed from imports -->
             <span class="text-sm font-bold">Studio</span>
@@ -278,33 +278,35 @@ const getDifficultyColor = (difficulty: string) => {
 
                 <div class="space-y-1">
                   <div class="font-bold text-sm line-clamp-2 group-hover:text-primary transition-colors">{{ task.title
-}}</div>
+                    }}</div>
                   <div class="text-xs text-muted-foreground">{{ new Date(task.processed_at).toLocaleTimeString([],
                     { hour: '2-digit', minute: '2-digit' }) }}</div>
-                  
+
                   <div class="flex flex-wrap gap-2 mt-1">
                     <!-- XP Badge -->
-                    <div class="inline-flex items-center gap-1.5 text-xs font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md border border-blue-500/20">
+                    <div
+                      class="inline-flex items-center gap-1.5 text-xs font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md border border-blue-500/20">
                       <PlusCircle class="w-3 h-3" />
                       {{ task.xp_gain || '?' }} XP
                     </div>
-                    
+
                     <!-- Coins Badge -->
-                    <div class="inline-flex items-center gap-1.5 text-xs font-bold text-yellow-500 bg-yellow-500/10 px-2 py-0.5 rounded-md border border-yellow-500/20">
+                    <div
+                      class="inline-flex items-center gap-1.5 text-xs font-bold text-yellow-500 bg-yellow-500/10 px-2 py-0.5 rounded-md border border-yellow-500/20">
                       <Coins class="w-3 h-3" />
                       {{ task.coin_gain || '?' }}
                     </div>
 
                     <!-- Difficulty Badge -->
-                    <div v-if="task.difficulty" 
-                         class="inline-flex items-center gap-1.5 text-xs font-bold px-2 py-0.5 rounded-md border capitalize"
-                         :class="getDifficultyColor(task.difficulty)">
+                    <div v-if="task.difficulty"
+                      class="inline-flex items-center gap-1.5 text-xs font-bold px-2 py-0.5 rounded-md border capitalize"
+                      :class="getDifficultyColor(task.difficulty)">
                       {{ task.difficulty }}
                     </div>
 
                     <!-- Crit Badge -->
-                    <div v-if="task.is_crit" 
-                         class="inline-flex items-center gap-1.5 text-xs font-black text-purple-500 bg-purple-500/10 px-2 py-0.5 rounded-md border border-purple-500/20 animate-pulse">
+                    <div v-if="task.is_crit"
+                      class="inline-flex items-center gap-1.5 text-xs font-black text-purple-500 bg-purple-500/10 px-2 py-0.5 rounded-md border border-purple-500/20 animate-pulse">
                       <Sparkles class="w-3 h-3" />
                       CRIT!
                     </div>
@@ -320,7 +322,7 @@ const getDifficultyColor = (difficulty: string) => {
               <p>No tasks completed yet.</p>
               <p class="text-sm mt-2">Sync TickTick to get started!</p>
             </div>
-            
+
             <div class="mt-6 pt-4 border-t border-border text-center">
               <router-link to="/history" class="text-sm font-bold text-primary hover:underline">
                 View Full History →
