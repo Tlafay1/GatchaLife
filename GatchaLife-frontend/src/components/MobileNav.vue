@@ -11,7 +11,7 @@ const navItems = [
   { name: 'Collection', path: '/collection', icon: Grid },
   { name: 'Summon', path: '/gatcha', icon: Sparkles, special: true },
   { name: 'History', path: '/history', icon: History },
-  { name: 'Creator', path: '/creator', icon: PenTool },
+  { name: 'Creator', path: '/studio', icon: PenTool },
 ];
 </script>
 

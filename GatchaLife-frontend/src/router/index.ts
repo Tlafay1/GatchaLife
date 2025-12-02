@@ -48,6 +48,11 @@ const router = createRouter({
       name: 'character-edit',
       component: () => import('@/character/views/CharacterEditor.vue'),
       props: true
+    },
+    {
+      path: '/gatcha',
+      name: 'gatcha',
+      component: () => import('@/gamification/GatchaView.vue')
     }
   ],
 })
