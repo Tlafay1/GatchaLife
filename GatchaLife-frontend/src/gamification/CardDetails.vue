@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { useCardDetails } from '@/lib/api-client';
 import { useRoute } from 'vue-router';
+import { ref } from 'vue';
+import { Maximize2, X } from 'lucide-vue-next';
 
 const route = useRoute();
 const cardId = Number(route.params.id);
 
 const { data: item, isLoading } = useCardDetails(cardId);
+const isFullScreen = ref(false);
 
 const rarityColor = (rarity: string) => {
   switch (rarity?.toLowerCase()) {
@@ -36,16 +39,24 @@ const rarityColor = (rarity: string) => {
       <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-12 items-start">
         <!-- Card Image -->
         <div 
-          class="relative aspect-[2/3] bg-gray-900 rounded-xl border-4 shadow-2xl overflow-hidden"
+          class="relative aspect-[2/3] bg-gray-900 rounded-xl border-4 shadow-2xl overflow-hidden group cursor-pointer"
           :class="rarityColor(item.card.rarity_name)"
+          @click="isFullScreen = true"
         >
           <img 
             v-if="item.card.image_url" 
             :src="item.card.image_url" 
-            class="w-full h-full object-cover"
+            class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
           <div v-else class="w-full h-full flex items-center justify-center text-muted-foreground">
             No Image
+          </div>
+
+          <!-- Expand Overlay -->
+          <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+            <div class="bg-black/50 p-3 rounded-full backdrop-blur-sm text-white">
+              <Maximize2 class="w-6 h-6" />
+            </div>
           </div>
         </div>
 
@@ -84,5 +95,24 @@ const rarityColor = (rarity: string) => {
         </div>
       </div>
     </div>
+
+    <!-- Full Screen Modal -->
+    <Teleport to="body">
+      <div v-if="isFullScreen && item" class="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-sm p-4"
+        @click="isFullScreen = false">
+        
+        <button @click="isFullScreen = false" class="absolute top-4 right-4 p-2 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full transition-colors z-50">
+          <X class="w-8 h-8" />
+        </button>
+
+        <div class="relative w-full h-full max-w-5xl max-h-[90vh] flex items-center justify-center" @click.stop>
+          <img 
+            v-if="item.card.image_url" 
+            :src="item.card.image_url" 
+            class="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+          />
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>

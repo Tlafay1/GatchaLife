@@ -7,7 +7,8 @@ import {
   useRaritiesList
 } from '@/lib/api-client';
 import { ref, computed } from 'vue';
-import { Search, FilterX, SlidersHorizontal, ChevronDown, ChevronUp } from 'lucide-vue-next';
+import { useRouter } from 'vue-router';
+import { Search, FilterX, SlidersHorizontal, ChevronDown, ChevronUp, Maximize2, X } from 'lucide-vue-next';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,6 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
+const router = useRouter();
 const filters = ref({
   rarity: 'all',
   theme: 'all',
@@ -28,6 +30,7 @@ const filters = ref({
 
 const groupBy = ref('series'); // Default group by
 const isFiltersOpen = ref(false); // Minimized by default
+const selectedCard = ref<any>(null); // For full screen view
 
 // Transform "all" to empty string for API
 const apiFilters = computed(() => {
@@ -116,6 +119,18 @@ const rarityColor = (rarity: string) => {
     case 'legendary': return 'border-yellow-500/50 shadow-yellow-500/20';
     default: return 'border-border';
   }
+};
+
+const goToDetails = (id: number) => {
+  router.push(`/collection/${id}`);
+};
+
+const openFullScreen = (item: any) => {
+  selectedCard.value = item;
+};
+
+const closeFullScreen = () => {
+  selectedCard.value = null;
 };
 </script>
 
@@ -248,7 +263,7 @@ const rarityColor = (rarity: string) => {
 
           <!-- Cards Grid -->
           <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-            <router-link v-for="item in items" :key="item.id" :to="`/collection/${item.id}`"
+            <div v-for="item in items" :key="item.id" @click="goToDetails(item.id)"
               class="group relative aspect-[2/3] bg-card rounded-xl border-2 overflow-hidden transition-all hover:scale-105 hover:z-10 cursor-pointer block"
               :class="rarityColor(item.card.rarity_name)">
               <!-- Image -->
@@ -268,15 +283,50 @@ const rarityColor = (rarity: string) => {
                 <div class="text-xs text-white/60 mt-1">x{{ item.count }}</div>
               </div>
 
-              <!-- Count Badge (always visible) -->
+              <!-- Count Badge (moved to left) -->
               <div v-if="item.count > 1"
-                class="absolute top-2 right-2 bg-black/60 backdrop-blur text-white text-xs font-bold px-2 py-1 rounded-full border border-white/20">
+                class="absolute top-2 left-2 bg-black/60 backdrop-blur text-white text-xs font-bold px-2 py-1 rounded-full border border-white/20 z-20">
                 x{{ item.count }}
               </div>
-            </router-link>
+
+              <!-- Full Screen Button (new) -->
+              <button @click.stop="openFullScreen(item)"
+                class="absolute top-2 right-2 p-2 bg-black/50 backdrop-blur rounded-full text-white hover:bg-black/80 transition-all z-20 opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                title="View Full Screen">
+                <Maximize2 class="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- Full Screen Modal -->
+    <Teleport to="body">
+      <div v-if="selectedCard" class="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-sm p-4"
+        @click="closeFullScreen">
+        
+        <!-- Close Button -->
+        <button @click="closeFullScreen" class="absolute top-4 right-4 p-2 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full transition-colors z-50">
+          <X class="w-8 h-8" />
+        </button>
+
+        <!-- Image Container -->
+        <div class="relative w-full h-full max-w-5xl max-h-[90vh] flex items-center justify-center" @click.stop>
+          <img 
+            v-if="selectedCard.card.image_url" 
+            :src="selectedCard.card.image_url" 
+            class="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+          />
+          
+          <!-- Info Overlay (Bottom) -->
+          <div class="absolute bottom-0 inset-x-0 p-6 bg-gradient-to-t from-black/90 to-transparent text-white text-center">
+            <div class="text-sm font-bold uppercase tracking-wider opacity-80 mb-1">{{ selectedCard.card.rarity_name }}</div>
+            <h2 class="text-2xl font-bold">{{ selectedCard.card.character_variant_name }}</h2>
+            <p class="text-white/60 text-sm mt-1">{{ selectedCard.card.series_name }}</p>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>

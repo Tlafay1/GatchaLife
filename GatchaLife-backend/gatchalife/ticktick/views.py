@@ -40,11 +40,26 @@ class TickTickViewSet(viewsets.ViewSet):
                 'is_crit': p.is_crit
             })
                 
+        # Get player streak
+        from gatchalife.gamification.models import Player
+        from django.contrib.auth.models import User
+        
+        current_streak = 0
+        user = User.objects.first()
+        if user:
+            player = Player.objects.filter(user=user).first()
+            if player and player.last_activity_date:
+                last_date = player.last_activity_date.date()
+                # If last activity was today or yesterday, streak is active
+                if last_date >= today - timedelta(days=1):
+                    current_streak = player.current_streak
+
         return Response({
             'total_completed_all_time': total_completed,
             'rewarded_total': total_processed,
             'rewarded_today': processed_today,
-            'recent_activity': recent_activity
+            'recent_activity': recent_activity,
+            'current_streak': current_streak
         })
 
     @action(detail=False, methods=['get'])

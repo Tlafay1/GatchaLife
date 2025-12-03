@@ -247,3 +247,20 @@ class TickTickStatsTests(TestCase):
         self.assertIn('date', first_entry)
         self.assertIn('total_xp', first_entry)
         self.assertIn('total_coins', first_entry)
+
+    def test_stats_endpoint_streak(self):
+        # Set streak
+        self.player.current_streak = 5
+        self.player.last_activity_date = timezone.now()
+        self.player.save()
+        
+        response = self.client.get('/ticktick/stats/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['current_streak'], 5)
+        
+        # Test broken streak (visually)
+        self.player.last_activity_date = timezone.now() - timedelta(days=2)
+        self.player.save()
+        
+        response = self.client.get('/ticktick/stats/')
+        self.assertEqual(response.data['current_streak'], 0)
