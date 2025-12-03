@@ -51,13 +51,6 @@ const rarityColor = (rarity: string) => {
           <div v-else class="w-full h-full flex items-center justify-center text-muted-foreground">
             No Image
           </div>
-
-          <!-- Expand Overlay -->
-          <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-            <div class="bg-black/50 p-3 rounded-full backdrop-blur-sm text-white">
-              <Maximize2 class="w-6 h-6" />
-            </div>
-          </div>
         </div>
 
         <!-- Details -->

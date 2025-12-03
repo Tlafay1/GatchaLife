@@ -288,13 +288,6 @@ const closeFullScreen = () => {
                 class="absolute top-2 left-2 bg-black/60 backdrop-blur text-white text-xs font-bold px-2 py-1 rounded-full border border-white/20 z-20">
                 x{{ item.count }}
               </div>
-
-              <!-- Full Screen Button (new) -->
-              <button @click.stop="openFullScreen(item)"
-                class="absolute top-2 right-2 p-2 bg-black/50 backdrop-blur rounded-full text-white hover:bg-black/80 transition-all z-20 opacity-100 md:opacity-0 md:group-hover:opacity-100"
-                title="View Full Screen">
-                <Maximize2 class="w-4 h-4" />
-              </button>
             </div>
           </div>
         </div>
