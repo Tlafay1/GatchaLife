@@ -90,9 +90,9 @@ class ZapierWebhookTests(TestCase):
         self.player.save()
 
         difficulties = [
-            ('difficulty/medium', 'medium', 1.5),
-            ('difficulty/hard', 'hard', 2.0),
-            ('difficulty/extreme', 'extreme', 3.0),
+            ('#medium', 'medium', 1.5),
+            ('#hard', 'hard', 2.0),
+            ('#extreme', 'extreme', 3.0),
         ]
 
         for i, (tag, expected_diff, mult) in enumerate(difficulties):
@@ -115,6 +115,44 @@ class ZapierWebhookTests(TestCase):
             # Calc: (20 * mult * 1.05 * 1.0) + 0 (no daily bonus)
             expected_coins = int(20 * mult * 1.05)
             self.assertEqual(pt.coin_gain, expected_coins)
+
+    def test_tag_parsing_formats(self):
+        """Test different tag formats (list, string, space-separated)"""
+        formats = [
+            (['#hard'], 'hard', 2.0),
+            ('#hard', 'hard', 2.0),
+            ('#test #hard #other', 'hard', 2.0),
+            ('#extreme, #hard', 'extreme', 3.0), # Comma separated
+        ]
+        
+        # Mock randoms
+        with patch('random.randint') as mock_randint, \
+             patch('random.random') as mock_random:
+            mock_randint.return_value = 20
+            mock_random.return_value = 0.5
+            
+            for i, (tags_input, expected_diff, mult) in enumerate(formats):
+                task_id = f'tag_format_{i}'
+                # We can send 'tag' or 'tags'
+                payload = {'data': json.dumps({
+                    'id': task_id, 
+                    'task_name': 'Tag Task',
+                    'tag': tags_input # Using 'tag' field as per user request
+                })}
+                
+                # Reset player
+                self.player.gatcha_coins = 0
+                self.player.current_streak = 1 # Multiplier 1.05
+                self.player.last_activity_date = timezone.now() # Avoid daily bonus
+                self.player.save()
+                
+                self.client.post(self.url, payload, format='json')
+                
+                pt = ProcessedTask.objects.get(task_id=task_id)
+                self.assertEqual(pt.difficulty, expected_diff, f"Failed for input: {tags_input}")
+                
+                expected_coins = int(20 * mult * 1.05)
+                self.assertEqual(pt.coin_gain, expected_coins)
 
     @patch('random.randint')
     @patch('random.random')
