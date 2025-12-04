@@ -15,7 +15,7 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - SECRET_KEY=${SECRET_KEY}
       - DEBUG=False
-      - ALLOWED_HOSTS=gatcha.tlafay.fr,localhost,127.0.0.1
+      - ALLOWED_HOSTS=gatcha.tlafay.fr,gatchalife-backend,localhost,127.0.0.1
       - N8N_BASE_URL=${N8N_BASE_URL}
       - N8N_WORKFLOW_WEBHOOK_PATH=${N8N_WORKFLOW_WEBHOOK_PATH}
       - N8N_GENERATE_IMAGE_WORKFLOW_ID=${N8N_GENERATE_IMAGE_WORKFLOW_ID}

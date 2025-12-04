@@ -138,21 +138,21 @@ def zapier_webhook(request):
     """
     from gatchalife.gamification.models import Player
     from django.contrib.auth.models import User
-    
+
     # Get task data from Zapier (using their field names)
     # FIXME: Couldn't get zapier to send JSON body properly, so using form-encoded 'data' field
     data = json.loads(request.data.get('data', '{}'))
     task_id = data.get('id')
     title = data.get('task_name', 'Unknown Task')
-    
+
     logger.info("webhook_received", task_id=task_id, title=title, raw_data=data)
-    
+
     if not task_id:
         logger.error("webhook_missing_id", data=data)
         return Response({
             'error': 'id is required'
         }, status=http_status.HTTP_400_BAD_REQUEST)
-    
+
     # Check if we've already processed this task
     if ProcessedTask.objects.filter(task_id=task_id).exists():
         logger.info("task_already_processed", task_id=task_id)
@@ -160,7 +160,7 @@ def zapier_webhook(request):
             'status': 'already_processed',
             'message': f'Task {task_id} has already been rewarded'
         }, status=http_status.HTTP_200_OK)
-    
+
     # Get the default player
     user = User.objects.first()
     if not user:
@@ -170,7 +170,8 @@ def zapier_webhook(request):
     # Parse tags to determine difficulty
     # Zapier might send tags as a list or a string depending on how it's configured
     # We'll try to handle both or just assume it's passed in 'data'
-    raw_tags = data.get('tags', [])
+    logger.debug("parsing_tags", raw_tags=data.get("tags"))
+    raw_tags = data.get("tags", [])
     if isinstance(raw_tags, str):
         # If it's a string representation of a list or comma separated
         if raw_tags.startswith('['):
@@ -180,10 +181,10 @@ def zapier_webhook(request):
                 raw_tags = []
         else:
             raw_tags = [t.strip() for t in raw_tags.split(',')]
-            
+
     difficulty = 'easy'
     difficulty_multiplier = 1.0
-    
+
     # Check for difficulty tags
     for tag in raw_tags:
         lower_tag = tag.lower()
@@ -211,7 +212,7 @@ def zapier_webhook(request):
         if last_date < today:
             # C'est la première tâche de la journée !
             daily_bonus = 50  # Gros boost : la moitié d'une carte offerte
-            
+
             if last_date == today - timedelta(days=1):
                 player.current_streak += 1
             else:
@@ -238,7 +239,7 @@ def zapier_webhook(request):
     # Formula: (Base * Difficulty * Streak * Crit) + Daily Bonus
     currency_gain = int((base_currency * difficulty_multiplier * streak_multiplier * crit_multiplier) + daily_bonus)
     xp_gain = int(currency_gain * 0.5) # L'XP suit la monnaie
-    
+
     logger.info("reward_calculated", 
         task_id=task_id, 
         currency_gain=currency_gain, 
@@ -251,10 +252,10 @@ def zapier_webhook(request):
             'daily_bonus': daily_bonus
         }
     )
-    
+
     player.xp += xp_gain
     player.gatcha_coins += currency_gain
-    
+
     # Level up logic
     xp_needed = player.level * 100
     levels_gained = 0
@@ -265,9 +266,9 @@ def zapier_webhook(request):
         player.gatcha_coins += 50  # Level up bonus
         xp_needed = player.level * 100
         logger.info("level_up", new_level=player.level, player=player.user.username)
-    
+
     player.save()
-    
+
     # Create ProcessedTask record with full details
     ProcessedTask.objects.create(
         task_id=task_id,
@@ -282,7 +283,7 @@ def zapier_webhook(request):
         daily_bonus=daily_bonus,
         tags=json.dumps(raw_tags)
     )
-    
+
     return Response({
         'status': 'success',
         'task_id': task_id,
