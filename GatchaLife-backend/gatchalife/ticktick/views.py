@@ -170,7 +170,6 @@ def zapier_webhook(request):
     # Parse tags to determine difficulty
     # Zapier might send tags as a list or a string depending on how it's configured
     # We'll try to handle both or just assume it's passed in 'data'
-    logger.debug("parsing_tags", raw_tags=data.get("tags"))
     raw_tags = data.get("tags", [])
     if isinstance(raw_tags, str):
         # If it's a string representation of a list or comma separated
