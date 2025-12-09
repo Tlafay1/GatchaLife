@@ -8,7 +8,7 @@ const { data: player, refetch: refetchPlayer } = usePlayerStats();
 const { mutate: rollGatcha, isPending: isRolling } = useGatchaRoll();
 
 const showGatcha = ref(false);
-const dropData = ref<{
+const dropData = ref<Array<{
   card: {
     rarity_name: string;
     image_url?: string;
@@ -17,12 +17,12 @@ const dropData = ref<{
     theme_name: string;
   };
   is_new: boolean;
-} | null>(null);
+}> | null>(null);
 
 const handleRoll = () => {
   rollGatcha(undefined, {
     onSuccess: (data) => {
-      dropData.value = data.drop;
+      dropData.value = data.drops;
       showGatcha.value = true;
       refetchPlayer(); // Update coins immediately
     },
@@ -69,11 +69,11 @@ const closeGatcha = () => {
           class="w-full max-w-xs py-4 bg-white hover:bg-slate-50 text-slate-900 rounded-xl font-black text-lg shadow-xl shadow-white/10 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-2">
           <span v-if="isRolling" class="animate-spin">↻</span>
           <Gem v-else class="w-5 h-5" />
-          {{ isRolling ? 'Summoning...' : 'Summon x1' }}
+          {{ isRolling ? 'Summoning...' : 'Summon x5' }}
         </button>
       </div>
     </div>
 
-    <GatchaAnimation v-if="showGatcha && dropData" :drop="dropData" @close="closeGatcha" />
+    <GatchaAnimation v-if="showGatcha && dropData" :drops="dropData" @close="closeGatcha" />
   </div>
 </template>
