@@ -14,10 +14,16 @@ from gatchalife.character.serializers import (
     CharacterSerializer,
 )
 from gatchalife.style.models import Rarity, Style, Theme
-from gatchalife.style.serializers import RaritySerializer, StyleSerializer, ThemeSerializer
+from gatchalife.style.serializers import (
+    RaritySerializer,
+    StyleSerializer,
+    ThemeSerializer,
+)
 
 
-def generate_image(character_variant: CharacterVariant, rarity: Rarity, style: Style, theme: Theme) -> GeneratedImage:
+def generate_image(
+    character_variant: CharacterVariant, rarity: Rarity, style: Style, theme: Theme
+) -> GeneratedImage:
     # Trigger N8N workflow to generate image
     n8n_url = f"{settings.N8N_BASE_URL}/{settings.N8N_WORKFLOW_WEBHOOK_PATH}/{settings.N8N_GENERATE_IMAGE_WORKFLOW_ID}"
 

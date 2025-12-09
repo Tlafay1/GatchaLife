@@ -64,3 +64,34 @@ class UserCard(models.Model):
 
     def __str__(self):
         return f"{self.player.user.username} - {self.card} (x{self.count})"
+
+class DailyCompanionState(models.Model):
+    MOOD_CHOICES = (
+        ("SAD", "Sad"),
+        ("NEUTRAL", "Neutral"),
+        ("HAPPY", "Happy"),
+        ("EXCITED", "Excited"),
+    )
+
+    player = models.ForeignKey(
+        Player, on_delete=models.CASCADE, related_name="daily_states"
+    )
+    date = models.DateField()
+    character_name = models.CharField(max_length=100)
+    mood_state = models.CharField(
+        max_length=20, choices=MOOD_CHOICES, default="NEUTRAL"
+    )
+    image = models.ImageField(upload_to="companion_daily/", blank=True, null=True)
+    image_url = models.URLField(
+        max_length=500, blank=True, null=True
+    )  # Fallback if using external URL
+    dialogue_text = models.TextField(blank=True)
+    productivity_score = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("player", "date")
+        ordering = ["-date"]
+
+    def __str__(self):
+        return f"{self.player.user.username} - {self.date} - {self.mood_state}"

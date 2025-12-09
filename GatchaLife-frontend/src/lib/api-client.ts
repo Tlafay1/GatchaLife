@@ -371,3 +371,12 @@ export const useProgressionStats = () => useQuery({
     return response.json();
   },
 });
+
+export const useCompanionState = () => useQuery({
+  queryKey: ['companion-state'],
+  queryFn: async () => {
+    const response = await fetch(`${OpenAPI.BASE}/gamification/companion/today/`);
+    if (!response.ok) throw new Error('Failed to fetch companion state');
+    return response.json();
+  },
+});

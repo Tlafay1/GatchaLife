@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { usePlayerStats, useGatchaRoll, useTickTickStats, useCollection } from '@/lib/api-client';
+import { usePlayerStats, useGatchaRoll, useTickTickStats, useCollection, useCompanionState } from '@/lib/api-client';
 import { ref, computed, watch } from 'vue';
 import SummonBanner from '@/components/SummonBanner.vue';
+import CompanionHero from '@/components/CompanionHero.vue';
 import StatCard from '@/components/StatCard.vue';
 import LevelUpModal from '@/components/LevelUpModal.vue';
 import {
@@ -17,6 +18,7 @@ import {
 
 const { data: player, refetch: refetchPlayer } = usePlayerStats();
 const { data: stats, isLoading: statsLoading } = useTickTickStats();
+const { data: companionState, isLoading: companionLoading } = useCompanionState();
 const { data: collection } = useCollection();
 
 const showLevelUp = ref(false);
@@ -143,25 +145,11 @@ const getDifficultyColor = (difficulty: string) => {
               </div>
             </div>
           </div>
-
-          <!-- Hero Action -->
-          <div class="flex flex-col gap-4 min-w-[200px]">
-            <!-- Sync button removed as per user request (Zapier handles it now) -->
-            <div class="p-4 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm">
-              <div class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Status</div>
-              <div class="flex items-center gap-2 text-green-400 font-bold">
-                <span class="relative flex h-3 w-3">
-                  <span
-                    class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                  <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-                </span>
-                Listening for Tasks
-              </div>
-              <div class="text-xs text-slate-500 mt-2">
-                Complete tasks in TickTick to earn rewards automatically.
-              </div>
-            </div>
-          </div>
+          
+          <!-- Companion Hero (Replaces Status Box or Adjacent) -->
+           <div class="flex-1 min-w-[300px] flex justify-center md:justify-end">
+              <CompanionHero :state="companionState" :loading="companionLoading" />
+           </div>
         </div>
       </div>
 

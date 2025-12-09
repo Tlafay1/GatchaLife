@@ -29,7 +29,7 @@ DEBUG = True
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost").split(",")
 
 N8N_BASE_URL = "https://n8n.tlafay.fr"
-N8N_WORKFLOW_WEBHOOK_PATH = "webhook"
+N8N_WORKFLOW_WEBHOOK_PATH = "webhook-test"
 N8N_GENERATE_IMAGE_WORKFLOW_ID = "generate-image"
 
 # Application definition
