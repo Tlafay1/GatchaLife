@@ -323,6 +323,26 @@ export const useCardDetails = (id: number) => useQuery({
   enabled: !!id,
 });
 
+export const useRerollCardImage = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const response = await fetch(`${OpenAPI.BASE}/gamification/collection/${id}/reroll_image/`, {
+        method: 'POST',
+      });
+      if (!response.ok) {
+        throw new Error('Reroll failed');
+      }
+      return response.json();
+    },
+    onSuccess: (data, id) => {
+      queryClient.setQueryData(['card', id], data); // Optimistic update or just set data
+      queryClient.invalidateQueries({ queryKey: ['card', id] });
+      queryClient.invalidateQueries({ queryKey: ['collection'] });
+    },
+  });
+};
+
 export const useGatchaRoll = () => {
   const queryClient = useQueryClient();
   return useMutation({

@@ -62,6 +62,25 @@ class CollectionViewSet(viewsets.ReadOnlyModelViewSet):
             
         return queryset
 
+    @action(detail=True, methods=["post"])
+    def reroll_image(self, request, pk=None):
+        user_card = self.get_object()
+        card = user_card.card
+        try:
+            generate_image(card.character_variant, card.rarity, card.style, card.theme)
+            # Re-fetch serializer to get new image URL
+            # We need to invalidate the prefetch cache if any, or just re-serialize
+            # Since generate_image creates a new DB row, re-serializing should pick it up
+            # if the serializer method performs a fresh query.
+            # CardSerializer.get_image_url performs a fresh query.
+            serializer = self.get_serializer(user_card)
+            return Response(serializer.data)
+        except Exception as e:
+            logger.error("image_regeneration_failed", error=str(e))
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
     def filter_queryset(self, queryset):
         queryset = super().filter_queryset(queryset)
         

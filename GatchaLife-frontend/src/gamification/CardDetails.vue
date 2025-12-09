@@ -1,14 +1,21 @@
 <script setup lang="ts">
-import { useCardDetails } from '@/lib/api-client';
+import { useCardDetails, useRerollCardImage } from '@/lib/api-client';
 import { useRoute } from 'vue-router';
 import { ref } from 'vue';
-import { Maximize2, X } from 'lucide-vue-next';
+import { Maximize2, X, RefreshCw, Loader2 } from 'lucide-vue-next';
 
 const route = useRoute();
 const cardId = Number(route.params.id);
 
 const { data: item, isLoading } = useCardDetails(cardId);
+const { mutate: rerollImage, isPending: isRerolling } = useRerollCardImage();
 const isFullScreen = ref(false);
+
+const handleReroll = () => {
+  if (confirm('Are you sure you want to regenerate this image? This will replace the current image for everyone.')) {
+    rerollImage(cardId);
+  }
+};
 
 const rarityColor = (rarity: string) => {
   switch (rarity?.toLowerCase()) {
@@ -38,19 +45,23 @@ const rarityColor = (rarity: string) => {
 
       <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-12 items-start">
         <!-- Card Image -->
-        <div 
-          class="relative aspect-[2/3] bg-gray-900 rounded-xl border-4 shadow-2xl overflow-hidden group cursor-pointer"
-          :class="rarityColor(item.card.rarity_name)"
-          @click="isFullScreen = true"
-        >
-          <img 
-            v-if="item.card.image_url" 
-            :src="item.card.image_url" 
-            class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-          />
-          <div v-else class="w-full h-full flex items-center justify-center text-muted-foreground">
-            No Image
+        <div class="flex flex-col gap-4">
+          <div
+            class="relative aspect-[2/3] bg-gray-900 rounded-xl border-4 shadow-2xl overflow-hidden group cursor-pointer"
+            :class="rarityColor(item.card.rarity_name)" @click="isFullScreen = true">
+            <img v-if="item.card.image_url" :src="item.card.image_url"
+              class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+            <div v-else class="w-full h-full flex items-center justify-center text-muted-foreground">
+              No Image
+            </div>
           </div>
+
+          <button @click="handleReroll" :disabled="isRerolling"
+            class="w-full py-3 bg-secondary hover:bg-secondary/80 rounded-lg font-bold flex items-center justify-center gap-2 transition-all disabled:opacity-50">
+            <Loader2 v-if="isRerolling" class="w-4 h-4 animate-spin" />
+            <RefreshCw v-else class="w-4 h-4" />
+            {{ isRerolling ? 'Regenerating...' : 'Regenerate Image' }}
+          </button>
         </div>
 
         <!-- Details -->
