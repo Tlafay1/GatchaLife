@@ -36,6 +36,25 @@ export class GamificationService {
         });
     }
     /**
+     * @param id
+     * @param data
+     * @returns UserCard
+     * @throws ApiError
+     */
+    public static gamificationCollectionRerollImage(
+        id: string,
+        data: UserCard,
+    ): CancelablePromise<UserCard> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/gamification/collection/{id}/reroll_image/',
+            path: {
+                'id': id,
+            },
+            body: data,
+        });
+    }
+    /**
      * @returns any
      * @throws ApiError
      */

@@ -18,22 +18,48 @@ class Character(models.Model):
     description = models.TextField(blank=True)
     unlock_level = models.PositiveIntegerField(default=1)
 
+    class HeightPerception(models.TextChoices):
+        SHORT = "SHORT", "Short"
+        AVERAGE = "AVERAGE", "Average"
+        TALL = "TALL", "Tall"
+        GIANT = "GIANT", "Giant"
+
     # Phase 2: Visual & Lore Anchors
     identity_face_image = models.ImageField(upload_to="character_faces/", blank=True, null=True)
     body_type_description = models.CharField(
         max_length=255, blank=True, help_text="ex: petite stature, slender build, flat chest"
     )
     height_perception = models.CharField(
-        max_length=50, blank=True, help_text="ex: short, tall, giant"
+        max_length=50,
+        choices=HeightPerception.choices,
+        default=HeightPerception.AVERAGE,
+        blank=True,
+        help_text="ex: short, tall, giant",
     )
+    hair_prompt = models.TextField(
+        blank=True, help_text="Description visuelle des cheveux"
+    )
+    eye_prompt = models.TextField(blank=True, help_text="Description visuelle des yeux")
+
+    visual_traits = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Liste de traits physiques immuables ex: ['scar on left eye', 'pale skin']",
+    )
+
     lore_tags = models.JSONField(
         default=list, blank=True, help_text="ex: ['stealth', 'modern', 'cynical']"
     )
     affinity_environments = models.JSONField(
-        default=list, blank=True, help_text="ex: ['shadows', 'city night']"
+        default=list,
+        blank=True,
+        help_text="ex: [{'name': 'shadows', 'visual_prompt': 'dark alley'}]",
     )
     clashing_environments = models.JSONField(
         default=list, blank=True, help_text="ex: ['holy church', 'bright beach']"
+    )
+    negative_traits_suggestion = models.TextField(
+        blank=True, help_text="Negative prompt morphologique"
     )
 
     def __str__(self):

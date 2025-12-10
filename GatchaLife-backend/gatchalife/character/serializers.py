@@ -22,7 +22,25 @@ class CharacterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Character
-        fields = ["id", "name", "description", "images", "variants", "series", "unlock_level"]
+        fields = [
+            "id",
+            "name",
+            "description",
+            "images",
+            "variants",
+            "series",
+            "unlock_level",
+            "identity_face_image",
+            "body_type_description",
+            "height_perception",
+            "hair_prompt",
+            "eye_prompt",
+            "visual_traits",
+            "lore_tags",
+            "affinity_environments",
+            "clashing_environments",
+            "negative_traits_suggestion",
+        ]
 
 
 class SeriesSerializer(serializers.ModelSerializer):

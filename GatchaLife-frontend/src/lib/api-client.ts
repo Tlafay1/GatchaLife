@@ -85,6 +85,29 @@ export const useUpdateCharacter = () => {
   });
 };
 
+export const useUploadCharacterFace = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { characterId: number; file: File; }) => {
+      const formData = new FormData();
+      formData.append('identity_face_image', data.file);
+      const response = await fetch(`${OpenAPI.BASE}/characters/${data.characterId}/`, {
+        method: 'PATCH',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Image upload failed');
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['character', data.id] });
+      queryClient.invalidateQueries({ queryKey: ['characters'] });
+    },
+  });
+};
+
 // --- Variants ---
 export const useCreateVariant = () => {
   const queryClient = useQueryClient();
