@@ -33,5 +33,8 @@ class ThemeSerializer(serializers.ModelSerializer):
             "keywords_theme",
             "prompt_background",
             "integration_idea",
+            "integration_idea",
             "unlock_level",
+            "vibe_tags",
+            "base_rarity_tier",
         ]

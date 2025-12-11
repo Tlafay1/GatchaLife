@@ -13,7 +13,17 @@ class CharacterVariantSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CharacterVariant
-        fields = ["id", "name", "description", "images", "character"]
+        fields = [
+            "id",
+            "name",
+            "description",
+            "images",
+            "character",
+            "theme",
+            "visual_override",
+            "variant_type",
+            "specific_reference_image",
+        ]
 
 
 class CharacterSerializer(serializers.ModelSerializer):

@@ -26,40 +26,68 @@ def generate_image(character_variant: CharacterVariant, rarity: Rarity, style: S
 
     character_variant_data = CharacterVariantSerializer(character_variant_instance).data
     character_data = CharacterSerializer(character_instance).data
+    
+    # Debug: Ensure we pass serializable data
+    # Serializers usually return dicts, but let's be safe with UUIDs/DateTimes if any (DRF handles them usually)
 
+    def encode_image_field(image_field):
+        if not image_field:
+            return None
+        try:
+            with image_field.open("rb") as f:
+                return base64.b64encode(f.read()).decode("utf-8")
+        except Exception as e:
+            logger.error(f"Failed to encode image: {e}")
+            return None
+
+    # Base64 encode Character Variant Reference Images (Existing logic)
     encoded_images_list = []
     for image_ref in character_variant_instance.images.all():
-        image_file = image_ref.image
+         encoded_data = encode_image_field(image_ref.image)
+         if encoded_data:
+            mimetype, _ = mimetypes.guess_type(image_ref.image.name)
+            encoded_images_list.append({
+                "filename": image_ref.image.name,
+                "mimetype": mimetype or "image/png",
+                "data": encoded_data,
+            })
+    
+    # Base64 encode Specific Reference (Variant)
+    specific_ref_b64 = encode_image_field(character_variant_instance.specific_reference_image)
 
-        with image_file.open("rb") as f:
-            binary_data = f.read()
-            base64_encoded_data = base64.b64encode(binary_data)
-            base64_string = base64_encoded_data.decode("utf-8")
-
-            mimetype, _ = mimetypes.guess_type(image_file.name)
-
-            encoded_images_list.append(
-                {
-                    "filename": image_file.name,
-                    "mimetype": mimetype or "image/png",
-                    "data": base64_string,
-                }
-            )
-
-    # --- Modification ici ---
+    # Prepare Prioritized Identity Face / Variant Reference as Base64
+    # Priority: Variant Specific Reference > Character Identity Face
+    # This will be sent as 'identity_face_image_b64' in the root or character object for N8N to use
+    
+    final_identity_image_b64 = None
+    
+    # Check Variant Specific Reference First
+    if character_variant_instance.specific_reference_image:
+        final_identity_image_b64 = encode_image_field(character_variant_instance.specific_reference_image)
+    
+    # Fallback to Character Identity Face
+    if not final_identity_image_b64 and character_instance.identity_face_image:
+         final_identity_image_b64 = encode_image_field(character_instance.identity_face_image)
 
     payload = {
-        "character_variant": {**character_variant_data, "images": encoded_images_list},
+        "character_variant": {
+            **character_variant_data, 
+            "images": encoded_images_list,
+            "specific_reference_image_b64": specific_ref_b64 
+        },
         "character": {
-            "name": character_data["name"],
-            "description": character_data["description"],
+            **character_data,
+            # We explicitly override/set this field for the N8N workflow to easily pick it up
+            "identity_face_image_b64": final_identity_image_b64
         },
         "rarity": RaritySerializer(rarity).data,
         "style": StyleSerializer(style).data,
         "theme": ThemeSerializer(theme).data,
+        # Legacy support: also sending it at root if workflow expects it there
+        "identity_face_image": final_identity_image_b64
     }
 
-    response = requests.post(n8n_url, json=payload)
+    response = requests.post(n8n_url, json=payload, timeout=120)
 
     response.raise_for_status()
 

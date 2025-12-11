@@ -83,17 +83,50 @@
           </div>
         </div>
 
-        <div class="space-y-2">
-          <Label>Wiki Source Text</Label>
-          <Textarea v-model="form.wiki_source_text" class="min-h-[200px] font-mono text-xs"
-            placeholder="Paste raw wiki text here (this will be sent to the automation pipeline)..." />
-          <p class="text-xs text-muted-foreground">This text will be parsed by the AI to autofill details later.</p>
-        </div>
+          <div class="space-y-2">
+            <Label>Wiki Source Text</Label>
+            <Textarea v-model="form.wiki_source_text" class="min-h-[200px] font-mono text-xs"
+              placeholder="Paste raw wiki text here (this will be sent to the automation pipeline)..." />
+            <p class="text-xs text-muted-foreground">This text will be parsed by the AI to autofill details later.</p>
+          </div>
       </CardContent>
     </Card>
 
     <!-- EDIT MODE: Full Details -->
     <div v-else class="space-y-6">
+      
+      <!-- Actions Bar -->
+      <div class="flex justify-end gap-2">
+        <Dialog v-model:open="isRegenerateDialogOpen">
+          <DialogTrigger as-child>
+            <Button variant="secondary" :disabled="isRegenerating">
+              <Sparkles class="w-4 h-4 mr-2" />
+              {{ isRegenerating ? 'Analyzing Wiki...' : 'Regenerate from Wiki' }}
+            </Button>
+          </DialogTrigger>
+          <DialogContent class="max-w-xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Regenerate Character from Wiki</DialogTitle>
+              <DialogDescription>
+                Paste the raw Wiki text below. This will <strong>overwrite</strong> existing traits and descriptions.
+              </DialogDescription>
+            </DialogHeader>
+            <div class="grid gap-4 py-4">
+              <div class="space-y-2">
+                <Label>Wiki Source Text</Label>
+                <Textarea v-model="regenerateWikiText" class="min-h-[200px] font-mono text-xs"
+                  placeholder="Paste wiki text here..." />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" @click="isRegenerateDialogOpen = false">Cancel</Button>
+              <Button @click="handleRegenerateSubmit" :disabled="isRegenerating || !regenerateWikiText">
+                {{ isRegenerating ? 'Processing...' : 'Regenerate' }}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
 
       <!-- Core Identity -->
       <Card>
@@ -230,9 +263,40 @@
       <div class="space-y-4">
         <div class="flex items-center justify-between">
           <h2 class="text-xl font-semibold tracking-tight">Visual Variants</h2>
-          <Button variant="outline" size="sm" @click="addVariant">
-            <Plus class="w-4 h-4 mr-2" /> Add Variant
-          </Button>
+          <div class="flex gap-2">
+            <Dialog v-model:open="isVariantDialogOpen">
+              <DialogTrigger as-child>
+                <Button variant="secondary" size="sm" @click.prevent="openVariantDialog" :disabled="isGeneratingVariants">
+                  <Sparkles class="w-4 h-4 mr-2" />
+                  {{ isGeneratingVariants ? 'Imagining...' : 'Generate with AI' }}
+                </Button>
+              </DialogTrigger>
+              <DialogContent class="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Generate Visual Variants</DialogTitle>
+                  <DialogDescription>
+                    AI will create new appearance variants based on your core identity.
+                  </DialogDescription>
+                </DialogHeader>
+                <div class="grid gap-4 py-4">
+                  <div class="space-y-2">
+                    <Label>Optional Direction</Label>
+                    <Input v-model="variantPrompt" placeholder="e.g. 'Halloween Theme', 'School Uniforms'" />
+                    <p class="text-xs text-muted-foreground">Leave empty for automatic diverse variants.</p>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" @click="isVariantDialogOpen = false">Cancel</Button>
+                  <Button @click="submitVariantGeneration" :disabled="isGeneratingVariants">
+                    {{ isGeneratingVariants ? 'Generating...' : 'Generate Variants' }}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+            <Button variant="outline" size="sm" @click="addVariant">
+              <Plus class="w-4 h-4 mr-2" /> Add Variant
+            </Button>
+          </div>
         </div>
 
         <div v-if="form.variants.length === 0"
@@ -253,7 +317,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Plus, Save } from 'lucide-vue-next'
+import { Plus, Save, Sparkles } from 'lucide-vue-next'
 import { useQueryClient } from '@tanstack/vue-query'
 
 // UI Components
@@ -272,7 +336,7 @@ import {
   useCreateCharacter, useUpdateCharacter,
   useCreateVariant, useUpdateVariant, useDeleteVariant,
   useUploadVariantImage, useDeleteVariantImage,
-  useUploadCharacterFace
+  useUploadCharacterFace, useCreateVariants, useGenerateCharacter
 } from '@/lib/api-client'
 import type { CharacterFormState } from '@/types/gacha'
 
@@ -380,6 +444,8 @@ const { mutateAsync: deleteVariant } = useDeleteVariant()
 const { mutateAsync: uploadImage, isPending: isUploadingVariantImg } = useUploadVariantImage()
 const { mutateAsync: deleteImage } = useDeleteVariantImage()
 const { mutateAsync: uploadFace, isPending: isUploadingFace } = useUploadCharacterFace()
+const { mutateAsync: generateVariants, isPending: isGeneratingVariants } = useCreateVariants()
+const { mutateAsync: regenerateCharacter, isPending: isRegenerating } = useGenerateCharacter()
 
 const isSaving = computed(() => isUpdatingChar.value || isUpdatingVariant.value)
 const isUploading = computed(() => isUploadingVariantImg.value || isUploadingFace.value)
@@ -414,6 +480,55 @@ const handleFaceImageUpload = (event: Event) => {
     // Preview
     form.identity_face_image_url = URL.createObjectURL(target.files[0])
   }
+}
+
+const isVariantDialogOpen = ref(false)
+const variantPrompt = ref('')
+
+const openVariantDialog = () => {
+  if (!isEditMode.value) {
+    alert("Please save the character first before generating variants.")
+    return
+  }
+  isVariantDialogOpen.value = true
+}
+
+const submitVariantGeneration = async () => {
+  try {
+    const result = await generateVariants({ 
+      characterId: parseInt(props.id!), 
+      prompt: variantPrompt.value 
+    })
+    
+    isVariantDialogOpen.value = false
+    variantPrompt.value = ''
+
+    if (result.variants && result.variants.length > 0) {
+      alert(`Successfully generated ${result.variants.length} variants: ${result.variants.join(', ')}`)
+    }
+  } catch (e: any) {
+    alert(`Generation failed: ${e.message}`)
+  }
+}
+
+const isRegenerateDialogOpen = ref(false)
+const regenerateWikiText = ref('')
+
+const handleRegenerateSubmit = async () => {
+    if (!regenerateWikiText.value) return
+
+    try {
+        await regenerateCharacter({
+            characterId: parseInt(props.id!),
+            wiki_text: regenerateWikiText.value
+        })
+        isRegenerateDialogOpen.value = false
+        regenerateWikiText.value = '' // Reset
+        // Alert handled by UI update mostly, but a toast would be better. For now simple confirmation or relying on UI refresh.
+        // If we want a success message we can check how other parts do it or just rely on data refresh.
+    } catch (e: any) {
+        alert(`Regeneration failed: ${e.message}`)
+    }
 }
 
 // --- SUBMISSION LOGIC ---

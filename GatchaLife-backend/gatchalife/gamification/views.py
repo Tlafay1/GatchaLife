@@ -123,7 +123,7 @@ class GatchaViewSet(viewsets.ViewSet):
         player.gatcha_coins -= cost
         player.save()
 
-        drops = []
+        drops_data = [] # List of dicts with selected r, variant, style, theme
         rarities = Rarity.objects.all()
         if not rarities.exists():
             return Response(
@@ -134,84 +134,97 @@ class GatchaViewSet(viewsets.ViewSet):
         ordered_rarities = list(rarities.order_by("-min_roll_threshold"))
         fallback_rarity = rarities.order_by("min_roll_threshold").first()
 
+        # --- STEP 1: Determine Drop Outcomes ---
         for _ in range(5):
-            # Drop Logic
-            # 1. Pick Rarity based on weights with Level Boost
-
             # Base roll 1-100
             base_roll = random.randint(1, 100)
-
-            # Level Boost: +0.5% chance for higher rarities per level (capped at +20%)
-            # We simulate this by adding a bonus to the roll
             level_bonus = min(player.level * 0.5, 20.0)
             final_roll = min(base_roll + level_bonus, 100)
 
             selected_rarity = None
-            # Sort by threshold descending to find the highest matching one
             for r in ordered_rarities:
                 if final_roll >= r.min_roll_threshold:
                     selected_rarity = r
                     break
-
             if not selected_rarity:
                 selected_rarity = fallback_rarity
 
-            # 2. Pick Character, Style, Theme based on Unlock Level
-            # Filter variants where character unlock level AND series unlock level are met
+            # Pick Components
             variants = CharacterVariant.objects.filter(
                 character__unlock_level__lte=player.level,
                 character__series__unlock_level__lte=player.level,
             )
-
             styles = Style.objects.filter(
                 rarity=selected_rarity, unlock_level__lte=player.level
             )
-
             themes = Theme.objects.filter(unlock_level__lte=player.level)
 
-            # Fallback
-            if not variants.exists():
-                variants = CharacterVariant.objects.all()
+            # Fallbacks
+            if not variants.exists(): variants = CharacterVariant.objects.all()
             if not styles.exists():
-                styles = Style.objects.filter(rarity=selected_rarity)
-                if not styles.exists():
-                    styles = Style.objects.all()
-            if not themes.exists():
-                themes = Theme.objects.all()
+                styles = Style.objects.filter(rarity=selected_rarity) or Style.objects.all()
+            if not themes.exists(): themes = Theme.objects.all()
 
-            if not variants.exists() or not styles.exists() or not themes.exists():
-                continue  # Skip this drop if something is really wrong, or error out?
-                # Ideally we should ensure data exists. For 5 drops, let's just try to get 5.
-                # If we error out here, the user loses coins.
-                # Let's hope the previous check was enough, or we just get what we can.
+            if not (variants.exists() and styles.exists() and themes.exists()):
+                continue
 
             variant = random.choice(list(variants))
             style = random.choice(list(styles))
             theme = random.choice(list(themes))
+            
+            drops_data.append({
+                "variant": variant,
+                "rarity": selected_rarity,
+                "style": style,
+                "theme": theme,
+                "roll_info": {
+                    "base_roll": base_roll,
+                    "level_bonus": level_bonus,
+                    "final_roll": final_roll,
+                    "rarity": selected_rarity.name,
+                }
+            })
 
-            # 3. Check for existing image or Generate New
-            image_exists = GeneratedImage.objects.filter(
-                character_variant=variant,
-                rarity=selected_rarity,
-                style=style,
-                theme=theme,
-            ).exists()
+        # --- STEP 2: Identify Missing Images (Deduplicated) ---
+        # Set of unique tuples needed
+        unique_combinations = set()
+        for d in drops_data:
+            unique_combinations.add((d["variant"], d["rarity"], d["style"], d["theme"]))
+        
+        missing_combinations = []
+        for combo in unique_combinations:
+            variant, r, s, t = combo
+            if not GeneratedImage.objects.filter(character_variant=variant, rarity=r, style=s, theme=t).exists():
+                missing_combinations.append(combo)
+        
+        # --- STEP 3: Parallel Generation ---
+        if missing_combinations:
+            from concurrent.futures import ThreadPoolExecutor, as_completed
+            
+            with ThreadPoolExecutor(max_workers=5) as executor:
+                futures = {
+                    executor.submit(generate_image, variant, r, s, t): (variant, r, s, t)
+                    for (variant, r, s, t) in missing_combinations
+                }
+                
+                for future in as_completed(futures):
+                    combo = futures[future]
+                    try:
+                        future.result() # Wait for completion, raise exception if any
+                    except Exception as e:
+                        logger.error("image_generation_failed", combo=combo, error=str(e))
+                        # We continue even if one fails, to give the user their cards (even if image is missing)
 
-            if not image_exists:
-                try:
-                    generate_image(variant, selected_rarity, style, theme)
-                except Exception as e:
-                    logger.error("image_generation_failed", error=str(e))
-
-            # 4. Get or Create Card
-            card, created_card = Card.objects.get_or_create(
-                character_variant=variant,
-                rarity=selected_rarity,
-                style=style,
-                theme=theme,
+        # --- STEP 4: Create Cards and UserCards ---
+        final_drops = []
+        for d in drops_data:
+            card, _ = Card.objects.get_or_create(
+                character_variant=d["variant"],
+                rarity=d["rarity"],
+                style=d["style"],
+                theme=d["theme"],
             )
 
-            # 5. Add to User Collection
             user_card, created_user_card = UserCard.objects.get_or_create(
                 player=player, card=card
             )
@@ -220,19 +233,14 @@ class GatchaViewSet(viewsets.ViewSet):
                 user_card.save()
 
             serializer = UserCardSerializer(user_card, context={"request": request})
-            drop_data = serializer.data
-            drop_data["is_new"] = created_user_card
-            drop_data["roll_info"] = {
-                "base_roll": base_roll,
-                "level_bonus": level_bonus,
-                "final_roll": final_roll,
-                "rarity": selected_rarity.name,
-            }
-            drops.append(drop_data)
+            drop_item = serializer.data
+            drop_item["is_new"] = created_user_card
+            drop_item["roll_info"] = d["roll_info"]
+            final_drops.append(drop_item)
 
         return Response(
             {
-                "drops": drops,
+                "drops": final_drops,
                 "remaining_coins": player.gatcha_coins,
             }
         )

@@ -1,8 +1,12 @@
 import requests
 import logging
 from django.conf import settings
-from rest_framework import viewsets, filters, permissions
+from rest_framework import viewsets, filters, permissions, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+import base64
+import mimetypes
 from django_filters.rest_framework import DjangoFilterBackend
 
 from .models import Series, Character, CharacterVariant, VariantReferenceImage
@@ -37,94 +41,129 @@ class CharacterViewSet(viewsets.ModelViewSet):
         wiki_text = self.request.data.get("wiki_source_text")
 
         if wiki_text:
-            n8n_path = getattr(settings, "N8N_CHARACTER_WEBHOOK_URL", None)
-            base_url = getattr(settings, "N8N_BASE_URL", None)
-            webhook_path = getattr(settings, "N8N_WORKFLOW_WEBHOOK_PATH", "webhook")
+            from .services import trigger_character_profiling, update_character_from_ai
+            
+            ai_data = trigger_character_profiling(character, wiki_text)
+            if ai_data:
+               update_character_from_ai(character, ai_data)
 
-            webhook_url = None
-            if n8n_path and base_url:
-                webhook_url = f"{base_url}/{webhook_path}/{n8n_path}"
+    @action(detail=True, methods=['post'], url_path='regenerate_from_wiki')
+    def regenerate_from_wiki(self, request, pk=None):
+        """
+        Re-runs the profiling logic on an existing character using the provided character data (wiki text).
+        """
+        character = self.get_object()
+        wiki_text = request.data.get("wiki_source_text", "")
+        
+        if not wiki_text:
+             return Response(
+                {"error": "Wiki source text is required."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-            if webhook_url:
-                try:
-                    # 2. Préparation du payload
-                    # IMPORTANT : La clé "Content" correspond à ce que ton Agent n8n attend ({{ $json.Content }})
-                    payload = {
-                        "character_name": character.name,
-                        "series": character.series.name
-                        if character.series
-                        else "Unknown",
-                        "Content": wiki_text,
-                    }
+        from .services import trigger_character_profiling, update_character_from_ai
+        
+        ai_data = trigger_character_profiling(character, wiki_text)
+        
+        if ai_data:
+            update_character_from_ai(character, ai_data)
+            serializer = self.get_serializer(character)
+            return Response(serializer.data)
+        else:
+            return Response(
+                {"error": "Failed to regenerate character data from AI."}, 
+                status=status.HTTP_502_BAD_GATEWAY
+            )
 
-                    files = {}
-                    if character.identity_face_image:
-                        try:
-                            # Re-open the file to ensure we can read it
-                            character.identity_face_image.open("rb")
-                            files["identity_face_image"] = (
-                                character.identity_face_image.name,
-                                character.identity_face_image,
-                                "application/octet-stream",
-                            )
-                        except Exception as file_err:
-                            logger.error(
-                                f"Could not prepare image file for automation: {file_err}"
-                            )
-
-                    # 3. Appel Synchrone (Blocking)
-                    # On augmente le timeout car l'IA met du temps à répondre (ex: 30s)
-                    # Use data=payload + files=files for multipart/form-data
-                    if files:
-                        response = requests.post(
-                            webhook_url, data=payload, files=files, timeout=30
-                        )
-                    else:
-                        response = requests.post(webhook_url, json=payload, timeout=30)
-
-                    if response.status_code == 200:
-                        # 4. Récupération et Parsing des données structurées
-                        ai_data = response.json()
-
-                        # Mise à jour des champs du modèle Character
-                        # Assure-toi que ces champs existent dans ton modèle Django
-                        character.body_type_description = ai_data.get(
-                            "body_type_description", ""
-                        )
-                        character.height_perception = ai_data.get(
-                            "height_perception", "average"
-                        )
-                        character.visual_traits = ai_data.get(
-                            "visual_traits", []
-                        )  # Supposant un JSONField ou ArrayField
-                        character.lore_tags = ai_data.get("lore_tags", [])
-                        character.affinity_environments = ai_data.get(
-                            "affinity_environments", []
-                        )
-                        character.clashing_environments = ai_data.get(
-                            "clashing_environments", []
-                        )
-
-                        # Sauvegarde finale avec les données enrichies
-                        character.save()
-
-                    else:
-                        logger.error(
-                            f"N8N Error {response.status_code}: {response.text}"
-                        )
-
-                except requests.Timeout:
-                    logger.warning(
-                        f"N8N timed out for character {character.id}. Background processing might be needed."
+    @action(detail=True, methods=['post'], url_path='create-variants')
+    def create_variants(self, request, pk=None):
+        character = self.get_object()
+        
+        n8n_path = getattr(settings, "N8N_CREATE_VARIANTS_WEBHOOK_URL", None)
+        base_url = getattr(settings, "N8N_BASE_URL", None)
+        webhook_path = getattr(settings, "N8N_WORKFLOW_WEBHOOK_PATH", "webhook")
+        
+        if not (n8n_path and base_url):
+            return Response(
+                {"error": "N8N configuration missing"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+            
+        webhook_url = f"{base_url}/{webhook_path}/{n8n_path}"
+        
+        # Prepare Payload
+        try:
+            payload = {
+                "character_id": character.id,
+                "name": character.name,
+                "lore_tags": character.lore_tags, # Will be sent as string if multipart, n8n might need parsing
+                "body_type": character.body_type_description,
+                "appearance": character.description, 
+                "series": character.series.name if character.series else "Unknown",
+                "user_prompt": request.data.get("prompt", "") 
+            }
+            
+            # Prepare Files (Binary)
+            files = {}
+            if character.identity_face_image:
+                 try:
+                    character.identity_face_image.open("rb")
+                    files["identity_face_image"] = (
+                        character.identity_face_image.name,
+                        character.identity_face_image,
+                        "application/octet-stream", # Or guess mime type
                     )
-                except Exception as e:
-                    # On log l'erreur mais on ne bloque pas la création du perso,
-                    # il sera créé mais sans les données IA.
-                    logger.error(
-                        f"Failed to trigger automation for character {character.id}: {e}"
-                    )
+                 except Exception as e:
+                     logger.error(f"Failed to open face image for binary upload: {e}")
+
+            # Send to n8n
+            # We use a longer timeout as generating ideas might take a moment.
+            # Using data=payload + files=files automagically sends multipart/form-data
+            if files:
+                response = requests.post(webhook_url, data=payload, files=files, timeout=60)
             else:
-                logger.warning("N8N_CHARACTER_WEBHOOK_URL is not set in settings.")
+                response = requests.post(webhook_url, json=payload, timeout=60)
+            
+            if response.status_code == 200:
+                data = response.json()
+                # Expected format from n8n:
+                # {
+                #   "variants": [
+                #       { "name": "Maid", "visual_override": " Classic maid outfit...", "type": "SKIN" },
+                #       { "name": "Cyberpunk", "visual_override": "High tech...", "type": "SKIN" }
+                #   ]
+                # }
+                
+                created_variants = []
+                variants_data = data.get("variants", [])
+                
+                for variant_data in variants_data:
+                    # Create Variant in DB
+                    variant = CharacterVariant.objects.create(
+                        character=character,
+                        name=variant_data.get("name", "Unknown Variant"),
+                        visual_override=variant_data.get("visual_override", ""),
+                        variant_type=variant_data.get("type", "SKIN"),
+                        description=variant_data.get("description", "")
+                    )
+                    created_variants.append(variant.name)
+                
+                return Response({
+                    "message": f"Successfully created {len(created_variants)} variants.",
+                    "variants": created_variants
+                })
+            else:
+                 return Response(
+                    {"error": f"N8N Error: {response.text}"}, 
+                    status=status.HTTP_502_BAD_GATEWAY
+                )
+
+        except Exception as e:
+            logger.error(f"Error in create_variants: {e}")
+            return Response(
+                {"error": str(e)}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class CharacterVariantViewSet(viewsets.ModelViewSet):

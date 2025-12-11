@@ -108,6 +108,68 @@ export const useUploadCharacterFace = () => {
   });
 };
 
+export const useGenerateCharacter = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { characterId: number; wiki_text: string }) => {
+      // Reuse the create endpoint logic or a specific update-from-profile logic?
+      // The user wants to "regenerate from scratch by AI like creation".
+      // Usually this means calling the same profiling logic but on an existing character.
+      // CharacterViewSet.create handles creating from wiki_text.
+      // CharacterViewSet.update doesn't seem to have special wiki_text handling in the provided code, 
+      // but let's assume we can POST to a custom action or just use update if modified.
+      // Actually, looking at views.py (from memory/context), perform_create handles wiki_source_text.
+      // If we want to re-run it on existing character, we probably need a custom action 'regenerate' or similar,
+      // OR we just use the 'update' passing wiki_text if the backend supports it.
+      // Let's assume we need a new action or reuse creation logic.
+      // WAIT, the user asked to "create frontend to regenerate".
+      // If I look at views.py, `perform_update` might not have the AI logic.
+      // Let's check views.py content again if I could? No, I must rely on memory or what I see.
+      // I saw `perform_create` having the AI logic. `perform_update` was not explicitly shown with AI logic.
+      // I'll add a new action `regenerate_profile` in backend in next step if needed, but for now let's define the hook
+      // to call an endpoint I WILL create: POST /characters/{id}/regenerate_profile/
+
+      const response = await fetch(`${OpenAPI.BASE}/characters/${data.characterId}/regenerate_from_wiki/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wiki_source_text: data.wiki_text }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to regenerate character');
+      }
+      return response.json();
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['character', variables.characterId] });
+    },
+  });
+};
+
+export const useCreateVariants = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { characterId: number; prompt?: string }) => {
+      const response = await fetch(`${OpenAPI.BASE}/characters/${data.characterId}/create-variants/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ prompt: data.prompt }),
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to create variants');
+      }
+      return response.json();
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['character', variables.characterId] });
+    },
+  });
+};
+
 // --- Variants ---
 export const useCreateVariant = () => {
   const queryClient = useQueryClient();
