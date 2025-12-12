@@ -17,6 +17,7 @@ class Character(models.Model):
     series = models.ForeignKey(Series, on_delete=models.CASCADE)
     description = models.TextField(blank=True)
     unlock_level = models.PositiveIntegerField(default=1)
+    legacy = models.BooleanField(default=False)
 
     class HeightPerception(models.TextChoices):
         SHORT = "SHORT", "Short"

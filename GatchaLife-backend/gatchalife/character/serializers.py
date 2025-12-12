@@ -50,6 +50,7 @@ class CharacterSerializer(serializers.ModelSerializer):
             "affinity_environments",
             "clashing_environments",
             "negative_traits_suggestion",
+            "legacy",
         ]
 
 

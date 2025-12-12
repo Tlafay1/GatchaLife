@@ -151,8 +151,7 @@ class GatchaViewSet(viewsets.ViewSet):
 
             # Pick Components
             variants = CharacterVariant.objects.filter(
-                character__unlock_level__lte=player.level,
-                character__series__unlock_level__lte=player.level,
+                character__legacy=False
             )
             styles = Style.objects.filter(
                 rarity=selected_rarity, unlock_level__lte=player.level
