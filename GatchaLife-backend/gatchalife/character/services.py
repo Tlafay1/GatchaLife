@@ -1,7 +1,8 @@
 import logging
 import requests
 from django.conf import settings
-from gatchalife.character.models import Character
+from gatchalife.character.models import Character, CharacterVariant
+from gatchalife.style.models import Theme
 
 logger = logging.getLogger(__name__)
 
@@ -97,3 +98,60 @@ def trigger_character_profiling(character, wiki_text):
     except Exception as e:
         logger.error(f"Failed to trigger automation for character {character.id}: {e}")
         return None
+
+def update_variants_from_ai(character, ai_data):
+    """
+    Updates character variants based on AI output.
+    Output schema: { variants: [{ name, type, visual_override, description, compatible_themes: [...] }] }
+    Creating Theme objects on the fly for the generated compatible themes.
+    """
+    if isinstance(ai_data, dict) and "output" in ai_data:
+        ai_data = ai_data["output"]
+    
+    variants_data = ai_data.get("variants", [])
+    created_variants = []
+
+    for v_data in variants_data:
+        variant_name = v_data.get("name")
+        if not variant_name: continue
+        
+        # Create/Update Variant
+        variant, created = CharacterVariant.objects.update_or_create(
+            character=character,
+            name=variant_name,
+            defaults={
+                "variant_type": v_data.get("type", "SKIN"),
+                "visual_override": v_data.get("visual_override", ""),
+                "description": v_data.get("description", ""),
+                "compatible_themes_data": v_data.get("compatible_themes", [])
+            }
+        )
+        
+        # Process Themes embedded in the variant
+        # We ensure these themes exist as Theme objects for use in GeneratedImage/Rolls
+        for theme_data in v_data.get("compatible_themes", []):
+            t_name = theme_data.get("name")
+            if not t_name: continue
+            
+            # Helper to parse string list if needed
+            raw_vibes = theme_data.get("vibe_tags", "")
+            if isinstance(raw_vibes, str):
+                vibe_list = [t.strip() for t in raw_vibes.split(",") if t.strip()]
+            else:
+                vibe_list = raw_vibes or []
+            
+            theme_defaults = {
+                "prompt_background": theme_data.get("prompt_background", ""),
+                "vibe_tags": vibe_list,
+            }
+            
+            # Create or Update the Theme object by name.
+            # Since themes are now "generated", we treat them as a dynamic pool.
+            Theme.objects.update_or_create(
+                name=t_name,
+                defaults=theme_defaults
+            )
+            
+        created_variants.append(variant)
+        
+    return created_variants

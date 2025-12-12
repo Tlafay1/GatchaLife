@@ -53,6 +53,11 @@ const router = createRouter({
       path: '/gatcha',
       name: 'gatcha',
       component: () => import('@/gamification/GatchaView.vue')
+    },
+    {
+      path: '/themes',
+      name: 'themes',
+      component: () => import('@/style/views/ThemeListView.vue')
     }
   ],
 })

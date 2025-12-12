@@ -125,32 +125,25 @@ class CharacterViewSet(viewsets.ModelViewSet):
                 response = requests.post(webhook_url, json=payload, timeout=60)
             
             if response.status_code == 200:
-                data = response.json()
-                # Expected format from n8n:
-                # {
-                #   "variants": [
-                #       { "name": "Maid", "visual_override": " Classic maid outfit...", "type": "SKIN" },
-                #       { "name": "Cyberpunk", "visual_override": "High tech...", "type": "SKIN" }
-                #   ]
-                # }
-                
-                created_variants = []
-                variants_data = data.get("variants", [])
-                
-                for variant_data in variants_data:
-                    # Create Variant in DB
-                    variant = CharacterVariant.objects.create(
-                        character=character,
-                        name=variant_data.get("name", "Unknown Variant"),
-                        visual_override=variant_data.get("visual_override", ""),
-                        variant_type=variant_data.get("type", "SKIN"),
-                        description=variant_data.get("description", "")
+                try:
+                    # Check if content is empty
+                    if not response.content:
+                         raise ValueError("Received empty response from N8N")
+                         
+                    data = response.json()
+                except ValueError as json_err:
+                     logger.error(f"Invalid JSON from N8N: {response.text}")
+                     return Response(
+                        {"error": f"N8N returned invalid JSON: {str(json_err)}"}, 
+                        status=status.HTTP_502_BAD_GATEWAY
                     )
-                    created_variants.append(variant.name)
+
+                from .services import update_variants_from_ai
+                created_variants = update_variants_from_ai(character, data)
                 
                 return Response({
                     "message": f"Successfully created {len(created_variants)} variants.",
-                    "variants": created_variants
+                    "variants": [v.name for v in created_variants]
                 })
             else:
                  return Response(
@@ -159,7 +152,7 @@ class CharacterViewSet(viewsets.ModelViewSet):
                 )
 
         except Exception as e:
-            logger.error(f"Error in create_variants: {e}")
+            logger.exception("Error in create_variants") # Log full traceback
             return Response(
                 {"error": str(e)}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR

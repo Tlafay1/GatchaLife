@@ -82,8 +82,11 @@ def generate_image(character_variant: CharacterVariant, rarity: Rarity, style: S
         },
         "rarity": RaritySerializer(rarity).data,
         "style": StyleSerializer(style).data,
-        "theme": ThemeSerializer(theme).data,
-        # Legacy support: also sending it at root if workflow expects it there
+        "theme": {
+            **ThemeSerializer(theme).data,
+            # Ensure vibe_tags is list or string as expected? AI workflow snippet handles it if string, but let's check serializer
+            # The model has vibe_tags as JSONField (list), the previous workflow snippet handled 'theme.vibe_tags'.
+        },
         "identity_face_image": final_identity_image_b64
     }
 

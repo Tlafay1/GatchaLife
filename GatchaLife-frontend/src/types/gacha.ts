@@ -13,7 +13,10 @@ export interface LocalVariantImage {
 export interface LocalVariantForm {
   id?: number;       // Existing variant ID
   name: string;
-  visual_description: string; // Maps to 'description' in backend
+  description: string;    // Narrative description (was visual_description)
+  visual_override: string; // Technical prompt
+  variant_type: 'CANON' | 'SKIN';
+  compatible_themes: any[]; // JSON data for compatible themes
   images: LocalVariantImage[];
 }
 

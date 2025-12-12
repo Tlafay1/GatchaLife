@@ -408,7 +408,10 @@ watch(characterData, (newChar) => {
     form.variants = (newChar.variants || []).map(v => ({
       id: v.id,
       name: v.name || '',
-      visual_description: v.description || '',
+      description: v.description || '',
+      visual_override: v.visual_override || '',
+      variant_type: (v.variant_type as any) || 'SKIN',
+      compatible_themes: v.compatible_themes_data || [],
       images: (v.images || []).map(img => ({
         id: img.id,
         url: img.image,
@@ -458,7 +461,14 @@ const buttonLabel = computed(() => {
 
 // --- FORM ACTIONS ---
 const addVariant = () => {
-  form.variants.push({ name: '', visual_description: '', images: [] })
+  form.variants.push({ 
+    name: '', 
+    description: '', 
+    visual_override: '',
+    variant_type: 'SKIN',
+    compatible_themes: [],
+    images: [] 
+  })
 }
 
 const removeVariant = (index: number) => {
@@ -614,10 +624,13 @@ const onSubmit = async () => {
       console.log("Step 3: Processing Variants")
       await Promise.all(form.variants.map(async (variant) => {
         let variantId: number
-        const variantPayload = {
+        const variantPayload: any = {
           character: charId,
           name: variant.name,
-          description: variant.visual_description
+          description: variant.description,
+          visual_override: variant.visual_override,
+          variant_type: variant.variant_type,
+          // compatible_themes: variant.compatible_themes  // We likely can't update these easily from here unless backend supports it
         }
 
         if (variant.id) { // Update

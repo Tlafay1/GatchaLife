@@ -91,6 +91,9 @@ class CharacterVariant(models.Model):
     specific_reference_image = models.ImageField(
         upload_to="variant_refs/", blank=True, null=True
     )
+    compatible_themes_data = models.JSONField(
+        default=list, blank=True, help_text="AI generated compatible themes for this variant"
+    )
 
     def __str__(self):
         return f"{self.character.name} ({self.name})"

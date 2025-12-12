@@ -45,6 +45,14 @@
                             <div class="bg-muted p-2 rounded text-xs font-mono break-all">{{ theme.prompt_background }}
                             </div>
                         </div>
+                        <div v-if="theme.vibe_tags && theme.vibe_tags.length">
+                             <div class="flex flex-wrap gap-1 mt-2">
+                                <span v-for="tag in theme.vibe_tags" :key="tag" 
+                                    class="px-2 py-0.5 bg-secondary text-secondary-foreground rounded text-[10px] uppercase tracking-wide">
+                                    {{ tag }}
+                                </span>
+                             </div>
+                        </div>
                     </div>
                 </CardContent>
             </Card>
@@ -96,6 +104,12 @@
                     </div>
 
                     <div class="grid gap-2">
+                        <Label>Vibe Tags (JSON Array)</Label>
+                        <Textarea v-model="form.vibe_tags" placeholder="['neon', 'dark']"
+                            class="h-16 font-mono text-xs" />
+                    </div>
+
+                    <div class="grid gap-2">
                         <Label>Integration Idea</Label>
                         <Textarea v-model="form.integration_idea" placeholder="How the character fits in..."
                             class="h-20" />
@@ -142,6 +156,7 @@ const form = reactive({
     keywords_theme: '',
     prompt_background: '',
     integration_idea: '',
+    vibe_tags: '',
     unlock_level: 1
 })
 
@@ -153,6 +168,7 @@ const openCreateDialog = () => {
     form.keywords_theme = ''
     form.prompt_background = ''
     form.integration_idea = ''
+    form.vibe_tags = '[]'
     form.unlock_level = 1
     isDialogOpen.value = true
 }
@@ -165,6 +181,12 @@ const openEditDialog = (theme: Theme) => {
     form.keywords_theme = theme.keywords_theme || ''
     form.prompt_background = theme.prompt_background || ''
     form.integration_idea = theme.integration_idea || ''
+    // Handle JSON field
+    try {
+        form.vibe_tags = JSON.stringify(theme.vibe_tags || [], null, 2)
+    } catch {
+        form.vibe_tags = '[]'
+    }
     form.unlock_level = theme.unlock_level || 1
     isDialogOpen.value = true
 }
@@ -176,6 +198,14 @@ const handleSubmit = async () => {
     }
 
     try {
+        let parsedVibeTags = []
+        try {
+            parsedVibeTags = JSON.parse(form.vibe_tags || '[]')
+        } catch {
+            alert('Invalid JSON for Vibe Tags')
+            return
+        }
+
         const payload = {
             name: form.name,
             category: form.category,
@@ -183,6 +213,7 @@ const handleSubmit = async () => {
             keywords_theme: form.keywords_theme,
             prompt_background: form.prompt_background,
             integration_idea: form.integration_idea,
+            vibe_tags: parsedVibeTags,
             unlock_level: form.unlock_level
         }
 
