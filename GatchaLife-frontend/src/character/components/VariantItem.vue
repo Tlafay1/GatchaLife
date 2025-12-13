@@ -57,17 +57,26 @@
         />
       </div>
       
-      <div v-if="modelValue.compatible_themes && modelValue.compatible_themes.length" class="space-y-2">
-        <Label class="text-xs text-muted-foreground">Compatible Themes (Auto-generated)</Label>
-        <div class="flex flex-wrap gap-2">
-          <div 
-            v-for="(theme, idx) in modelValue.compatible_themes" 
-            :key="idx" 
-            class="flex items-center gap-2 px-3 py-1.5 bg-secondary/50 rounded-md border text-xs"
-          >
-            <span class="font-medium text-secondary-foreground">{{ theme.name }}</span>
-            <span class="w-1 h-1 rounded-full bg-muted-foreground/40"></span>
-            <span class="text-muted-foreground italic truncate max-w-[150px]">{{ theme.vibe_tags }}</span>
+      <div v-if="modelValue.card_configurations && modelValue.card_configurations.length" class="space-y-2">
+        <Label class="text-xs text-muted-foreground">Generated Card Configurations</Label>
+        <div class="border rounded-md overflow-hidden text-xs">
+          <div class="grid grid-cols-12 gap-2 bg-muted/50 p-2 font-medium border-b">
+            <div class="col-span-2">Rarity</div>
+            <div class="col-span-3">Theme</div>
+            <div class="col-span-3">Style</div>
+            <div class="col-span-4">Pose</div>
+          </div>
+          <div v-for="(config, idx) in modelValue.card_configurations" :key="idx" class="grid grid-cols-12 gap-2 p-2 border-b last:border-0 hover:bg-muted/20 items-center">
+            <div class="col-span-2">
+              <span :class="['px-1.5 py-0.5 rounded text-[10px] uppercase font-bold border', 
+                config.rarity === 'COMMON' ? 'bg-slate-100 text-slate-600 border-slate-200' :
+                config.rarity === 'RARE' ? 'bg-blue-100 text-blue-600 border-blue-200' :
+                'bg-yellow-100 text-yellow-600 border-yellow-200'
+              ]">{{ config.rarity }}</span>
+            </div>
+            <div class="col-span-3 font-medium truncate" :title="config.theme?.name">{{ config.theme?.name || '-' }}</div>
+            <div class="col-span-3 truncate" :title="config.style?.name">{{ config.style?.name || '-' }}</div>
+            <div class="col-span-4 text-muted-foreground truncate italic" :title="config.pose">{{ config.pose || '-' }}</div>
           </div>
         </div>
       </div>

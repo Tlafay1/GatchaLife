@@ -84,6 +84,22 @@ const rarityColor = (rarity: string) => {
               <div class="font-bold">{{ item.card.theme_name }}</div>
             </div>
           </div>
+          
+          <div v-if="item.card.pose" class="bg-card border border-border rounded-lg p-4">
+              <div class="text-xs text-muted-foreground uppercase tracking-wider mb-1">Pose (Prompt)</div>
+              <div class="italic text-sm">{{ item.card.pose }}</div>
+          </div>
+
+          <div v-if="item.card.description || item.card.visual_override" class="space-y-4">
+            <div v-if="item.card.description">
+               <div class="text-xs text-muted-foreground uppercase tracking-wider mb-1">Narrative Description</div>
+               <p class="text-sm border-l-2 pl-3 border-primary/50">{{ item.card.description }}</p>
+            </div>
+            <div v-if="item.card.visual_override" class="bg-muted/30 p-3 rounded text-xs font-mono">
+               <div class="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Visual Override</div>
+               {{ item.card.visual_override }}
+            </div>
+          </div>
 
           <div class="bg-card border border-border rounded-lg p-6">
             <div class="flex justify-between items-center mb-4">

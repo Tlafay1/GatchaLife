@@ -23,6 +23,7 @@ class CharacterVariantSerializer(serializers.ModelSerializer):
             "visual_override",
             "variant_type",
             "specific_reference_image",
+            "card_configurations_data",
         ]
 
 

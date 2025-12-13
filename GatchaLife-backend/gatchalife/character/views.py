@@ -96,11 +96,20 @@ class CharacterViewSet(viewsets.ModelViewSet):
             payload = {
                 "character_id": character.id,
                 "name": character.name,
-                "lore_tags": character.lore_tags, # Will be sent as string if multipart, n8n might need parsing
+                "series": character.series.name if character.series else "Unknown",
+                "user_prompt": request.data.get("prompt", ""),
+                
+                # Detailed Description Fields
+                "lore_tags": character.lore_tags,
                 "body_type": character.body_type_description,
                 "appearance": character.description, 
-                "series": character.series.name if character.series else "Unknown",
-                "user_prompt": request.data.get("prompt", "") 
+                "visual_traits": character.visual_traits,
+                "hair_prompt": character.hair_prompt,
+                "eye_prompt": character.eye_prompt,
+                "height_perception": character.height_perception,
+                "affinity_environments": character.affinity_environments,
+                "clashing_environments": character.clashing_environments,
+                "negative_traits_suggestion": character.negative_traits_suggestion,
             }
             
             # Prepare Files (Binary)
@@ -120,9 +129,9 @@ class CharacterViewSet(viewsets.ModelViewSet):
             # We use a longer timeout as generating ideas might take a moment.
             # Using data=payload + files=files automagically sends multipart/form-data
             if files:
-                response = requests.post(webhook_url, data=payload, files=files, timeout=60)
+                response = requests.post(webhook_url, data=payload, files=files, timeout=600)
             else:
-                response = requests.post(webhook_url, json=payload, timeout=60)
+                response = requests.post(webhook_url, json=payload, timeout=600)
             
             if response.status_code == 200:
                 try:

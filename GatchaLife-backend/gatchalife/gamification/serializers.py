@@ -30,10 +30,13 @@ class CardSerializer(serializers.ModelSerializer):
     theme_name = serializers.CharField(source='theme.name', read_only=True)
     series_name = serializers.CharField(source='character_variant.character.series.name', read_only=True)
     image_url = serializers.SerializerMethodField()
+    pose = serializers.SerializerMethodField()
+    visual_override = serializers.CharField(source='character_variant.visual_override', read_only=True)
+    description = serializers.CharField(source='character_variant.description', read_only=True)
 
     class Meta:
         model = Card
-        fields = ['id', 'character_variant', 'character_variant_name', 'character_name', 'series_name', 'rarity', 'rarity_name', 'style', 'style_name', 'theme', 'theme_name', 'image_url']
+        fields = ['id', 'character_variant', 'character_variant_name', 'character_name', 'series_name', 'rarity', 'rarity_name', 'style', 'style_name', 'theme', 'theme_name', 'image_url', 'pose', 'visual_override', 'description']
 
     def get_image_url(self, obj):
         # Logic to find the generated image for this card
@@ -52,6 +55,27 @@ class CardSerializer(serializers.ModelSerializer):
                 return request.build_absolute_uri(image.image.url)
             return image.image.url
         return None
+
+    def get_pose(self, obj):
+        # Infer pose from matching config in variant
+        configs = obj.character_variant.card_configurations_data
+        # Match by Rarity AND Style AND Theme to be precise
+        # (Assuming V/R/S/T uniqueness holds as fixed in previous step)
+        for config in configs:
+            c_rarity = config.get("rarity", "").upper()
+            c_style = config.get("style", {}).get("name")
+            c_theme = config.get("theme", {}).get("name")
+            
+            if (c_rarity == obj.rarity.name.upper() and
+                c_style == obj.style.name and
+                c_theme == obj.theme.name):
+                return config.get("pose", "")
+        
+        # Fallback: loose match or first matching rarity
+        for config in configs:
+            if config.get("rarity", "").upper() == obj.rarity.name.upper():
+                 return config.get("pose", "")
+        return ""
 
 class UserCardSerializer(serializers.ModelSerializer):
     card = CardSerializer(read_only=True)

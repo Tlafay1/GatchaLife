@@ -16,7 +16,7 @@ export interface LocalVariantForm {
   description: string;    // Narrative description (was visual_description)
   visual_override: string; // Technical prompt
   variant_type: 'CANON' | 'SKIN';
-  compatible_themes: any[]; // JSON data for compatible themes
+  card_configurations: any[]; // JSON data for card configurations (rarity, pose, theme, style)
   images: LocalVariantImage[];
 }
 

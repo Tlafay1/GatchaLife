@@ -17,7 +17,7 @@ from gatchalife.style.models import Rarity, Style, Theme
 from gatchalife.style.serializers import RaritySerializer, StyleSerializer, ThemeSerializer
 
 
-def generate_image(character_variant: CharacterVariant, rarity: Rarity, style: Style, theme: Theme) -> GeneratedImage:
+def generate_image(character_variant: CharacterVariant, rarity: Rarity, style: Style, theme: Theme, pose: str = None, card_configuration: dict = None) -> GeneratedImage:
     # Trigger N8N workflow to generate image
     n8n_url = f"{settings.N8N_BASE_URL}/{settings.N8N_WORKFLOW_WEBHOOK_PATH}/{settings.N8N_GENERATE_IMAGE_WORKFLOW_ID}"
 
@@ -84,13 +84,13 @@ def generate_image(character_variant: CharacterVariant, rarity: Rarity, style: S
         "style": StyleSerializer(style).data,
         "theme": {
             **ThemeSerializer(theme).data,
-            # Ensure vibe_tags is list or string as expected? AI workflow snippet handles it if string, but let's check serializer
-            # The model has vibe_tags as JSONField (list), the previous workflow snippet handled 'theme.vibe_tags'.
         },
+        "pose": pose,
+        "card_configuration": card_configuration, # Pass full or partial config if needed
         "identity_face_image": final_identity_image_b64
     }
 
-    response = requests.post(n8n_url, json=payload, timeout=120)
+    response = requests.post(n8n_url, json=payload, timeout=600)
 
     response.raise_for_status()
 

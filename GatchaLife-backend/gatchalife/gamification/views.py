@@ -135,8 +135,14 @@ class GatchaViewSet(viewsets.ViewSet):
         fallback_rarity = rarities.order_by("min_roll_threshold").first()
 
         # --- STEP 1: Determine Drop Outcomes ---
+        # Pre-fetch all variants with their configs to avoid N+1 equivalent in loop
+        all_variants = list(CharacterVariant.objects.filter(character__legacy=False).select_related('character'))
+        
+        # Map rarity names for easier lookup
+        # Assuming Rarity.name matches the keys in JSON (e.g. "COMMON", "RARE") case-insensitivity might be needed
+        
         for _ in range(5):
-            # Base roll 1-100
+            # ... (Roll Logic kept same) ...
             base_roll = random.randint(1, 100)
             level_bonus = min(player.level * 0.5, 20.0)
             final_roll = min(base_roll + level_bonus, 100)
@@ -149,33 +155,75 @@ class GatchaViewSet(viewsets.ViewSet):
             if not selected_rarity:
                 selected_rarity = fallback_rarity
 
-            # Pick Components
-            variants = CharacterVariant.objects.filter(
-                character__legacy=False
-            )
-            styles = Style.objects.filter(
-                rarity=selected_rarity, unlock_level__lte=player.level
-            )
-            themes = Theme.objects.filter(unlock_level__lte=player.level)
-
-            # Fallbacks
-            if not variants.exists(): variants = CharacterVariant.objects.all()
-            if not styles.exists():
-                styles = Style.objects.filter(rarity=selected_rarity) or Style.objects.all()
-            if not themes.exists(): themes = Theme.objects.all()
-
-            if not (variants.exists() and styles.exists() and themes.exists()):
-                continue
-
-            variant = random.choice(list(variants))
-            style = random.choice(list(styles))
-            theme = random.choice(list(themes))
+            # Flatten probability: Collect all valid (variant, config) pairs for this rarity
+            valid_cards = []
+            for v in all_variants:
+                configs = v.card_configurations_data
+                for c in configs:
+                    if c.get('rarity', '').upper() == selected_rarity.name.upper():
+                        valid_cards.append({
+                            "variant": v,
+                            "config": c
+                        })
             
+            # Fallback: if no specific config found for this rarity, use any variant?
+            # Or fallback to previous logic of "pick any variant" but treating it as a new "Common" card?
+            # For strictness, if no valid_cards, we have a problem (empty pool for this rarity).
+            # But earlier code had fallbacks. Let's keep a robust fallback.
+            
+            if not valid_cards:
+                # Fallback: Pick any variant from valid ones for this rarity 
+                # (Wait, if valid_cards is empty, no variant has this rarity config)
+                # So we must pick ANY variant and ANY config (preferably closest rarity)
+                # But realistically this should not happen if pool is populated.
+                # Let's just pick random variant and random config.
+                selection = {
+                     "variant": random.choice(all_variants) if all_variants else None,
+                     "config": {}
+                }
+                if selection["variant"]:
+                     configs = selection["variant"].card_configurations_data
+                     selection["config"] = random.choice(configs) if configs else {}
+            else:
+                 selection = random.choice(valid_cards)
+            
+            if not selection.get("variant"):
+                 continue
+
+            variant = selection["variant"]
+            target_config = selection["config"]
+            
+            # Resolve Style and Theme from Config
+            # They should exist in DB because of update_variants_from_ai
+            style_name = target_config.get('style', {}).get('name')
+            theme_name = target_config.get('theme', {}).get('name')
+            pose_prompt = target_config.get('pose', '')
+            
+            style = None
+            theme = None
+            
+            if style_name:
+                style = Style.objects.filter(name=style_name, rarity=selected_rarity).first()
+                # If not found for specific rarity, try loose match but prefer Rarity match
+                if not style:
+                     style = Style.objects.filter(name=style_name).first()
+
+            if theme_name:
+                theme = Theme.objects.filter(name=theme_name).first()
+            
+            # Double Fallback if not found (should not happen if synced)
+            if not style:
+                style = Style.objects.filter(rarity=selected_rarity).first() or Style.objects.first()
+            if not theme:
+                theme = Theme.objects.first()
+
             drops_data.append({
                 "variant": variant,
                 "rarity": selected_rarity,
                 "style": style,
                 "theme": theme,
+                "pose": pose_prompt,
+                "card_configuration": target_config, # Pass full config
                 "roll_info": {
                     "base_roll": base_roll,
                     "level_bonus": level_bonus,
@@ -185,25 +233,28 @@ class GatchaViewSet(viewsets.ViewSet):
             })
 
         # --- STEP 2: Identify Missing Images (Deduplicated) ---
-        # Set of unique tuples needed
-        unique_combinations = set()
+        # Deduplicate tasks by (Variant, Rarity, Style, Theme) key.
+        # We process the first encountered configuration for any given key.
+        tasks_map = {} 
         for d in drops_data:
-            unique_combinations.add((d["variant"], d["rarity"], d["style"], d["theme"]))
+             key = (d["variant"], d["rarity"], d["style"], d["theme"])
+             if key not in tasks_map:
+                 tasks_map[key] = d["card_configuration"]
         
         missing_combinations = []
-        for combo in unique_combinations:
-            variant, r, s, t = combo
+        # Check DB
+        for (variant, r, s, t), config in tasks_map.items():
             if not GeneratedImage.objects.filter(character_variant=variant, rarity=r, style=s, theme=t).exists():
-                missing_combinations.append(combo)
-        
+                missing_combinations.append((variant, r, s, t, config)) # Pass config instead of just pose
+
         # --- STEP 3: Parallel Generation ---
         if missing_combinations:
             from concurrent.futures import ThreadPoolExecutor, as_completed
             
             with ThreadPoolExecutor(max_workers=5) as executor:
                 futures = {
-                    executor.submit(generate_image, variant, r, s, t): (variant, r, s, t)
-                    for (variant, r, s, t) in missing_combinations
+                    executor.submit(generate_image, variant, r, s, t, config): (variant, r, s, t)
+                    for (variant, r, s, t, config) in missing_combinations
                 }
                 
                 for future in as_completed(futures):

@@ -411,7 +411,7 @@ watch(characterData, (newChar) => {
       description: v.description || '',
       visual_override: v.visual_override || '',
       variant_type: (v.variant_type as any) || 'SKIN',
-      compatible_themes: v.compatible_themes_data || [],
+      card_configurations: v.card_configurations_data || [],
       images: (v.images || []).map(img => ({
         id: img.id,
         url: img.image,
@@ -466,7 +466,7 @@ const addVariant = () => {
     description: '', 
     visual_override: '',
     variant_type: 'SKIN',
-    compatible_themes: [],
+    card_configurations: [],
     images: [] 
   })
 }
@@ -630,7 +630,7 @@ const onSubmit = async () => {
           description: variant.description,
           visual_override: variant.visual_override,
           variant_type: variant.variant_type,
-          // compatible_themes: variant.compatible_themes  // We likely can't update these easily from here unless backend supports it
+          card_configurations_data: variant.card_configurations
         }
 
         if (variant.id) { // Update

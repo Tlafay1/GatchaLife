@@ -85,15 +85,15 @@ class CharacterVariant(models.Model):
         SKIN = 'SKIN', 'Skin'
 
     variant_type = models.CharField(
-        max_length=10,
+        max_length=50,
         choices=VariantType.choices,
         default=VariantType.CANON,
     )
     specific_reference_image = models.ImageField(
         upload_to="variant_refs/", blank=True, null=True
     )
-    compatible_themes_data = models.JSONField(
-        default=list, blank=True, help_text="AI generated compatible themes for this variant"
+    card_configurations_data = models.JSONField(
+        default=list, blank=True, help_text="AI generated card configurations (rarity, pose, theme, style)"
     )
 
     def __str__(self):
