@@ -2,9 +2,18 @@
   <Card class="mb-6 relative border-dashed border-2 hover:border-solid transition-colors bg-card text-card-foreground">
     <CardHeader class="pb-3">
       <div class="flex justify-between items-center">
-        <CardTitle class="text-base font-medium flex items-center gap-2">
-          <span class="bg-primary/10 text-primary px-2 py-1 rounded text-xs uppercase tracking-wide">
+        <CardTitle class="text-base font-medium flex items-center gap-3">
+          <span class="bg-primary/10 text-primary px-2 py-1 rounded text-xs uppercase tracking-wide font-bold">
             {{ modelValue.name || 'New Variant' }}
+          </span>
+          <span 
+            v-if="modelValue.variant_type" 
+            :class="[
+              'px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider border',
+              modelValue.variant_type === 'CANON' ? 'border-amber-500/50 text-amber-600 bg-amber-500/10' : 'border-blue-500/50 text-blue-600 bg-blue-500/10'
+            ]"
+          >
+            {{ modelValue.variant_type }}
           </span>
         </CardTitle>
         <Button 
@@ -29,13 +38,47 @@
       </div>
 
       <div class="space-y-2">
-        <Label>Visual Prompt Details</Label>
+        <Label>Narrative Description</Label>
         <Textarea 
-          :model-value="modelValue.visual_description" 
-          @update:model-value="(v) => updateField('visual_description', v as string)"
-          placeholder="Describe hair, eyes, clothing specific to this version..."
-          class="h-24 resize-none"
+          :model-value="modelValue.description" 
+          @update:model-value="(v) => updateField('description', v as string)"
+          placeholder="Narrative description of this variant..."
+          class="h-20 resize-none text-sm"
         />
+      </div>
+
+      <div class="space-y-2 bg-muted/30 p-3 rounded-md border border-muted/50">
+        <Label class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Technical Visual Override (AI)</Label>
+        <Textarea 
+          :model-value="modelValue.visual_override" 
+          @update:model-value="(v) => updateField('visual_override', v as string)"
+          placeholder="Technical prompt for image generation..."
+          class="h-24 resize-none font-mono text-xs mt-1"
+        />
+      </div>
+      
+      <div v-if="modelValue.card_configurations && modelValue.card_configurations.length" class="space-y-2">
+        <Label class="text-xs text-muted-foreground">Generated Card Configurations</Label>
+        <div class="border rounded-md overflow-hidden text-xs">
+          <div class="grid grid-cols-12 gap-2 bg-muted/50 p-2 font-medium border-b">
+            <div class="col-span-2">Rarity</div>
+            <div class="col-span-3">Theme</div>
+            <div class="col-span-3">Style</div>
+            <div class="col-span-4">Pose</div>
+          </div>
+          <div v-for="(config, idx) in modelValue.card_configurations" :key="idx" class="grid grid-cols-12 gap-2 p-2 border-b last:border-0 hover:bg-muted/20 items-center">
+            <div class="col-span-2">
+              <span :class="['px-1.5 py-0.5 rounded text-[10px] uppercase font-bold border', 
+                config.rarity === 'COMMON' ? 'bg-slate-100 text-slate-600 border-slate-200' :
+                config.rarity === 'RARE' ? 'bg-blue-100 text-blue-600 border-blue-200' :
+                'bg-yellow-100 text-yellow-600 border-yellow-200'
+              ]">{{ config.rarity }}</span>
+            </div>
+            <div class="col-span-3 font-medium truncate" :title="config.theme?.name">{{ config.theme?.name || '-' }}</div>
+            <div class="col-span-3 truncate" :title="config.style?.name">{{ config.style?.name || '-' }}</div>
+            <div class="col-span-4 text-muted-foreground truncate italic" :title="config.pose">{{ config.pose || '-' }}</div>
+          </div>
+        </div>
       </div>
 
       <Separator class="my-2" />

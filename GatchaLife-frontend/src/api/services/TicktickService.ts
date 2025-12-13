@@ -7,6 +7,28 @@ import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class TicktickService {
     /**
+     * Returns full history of processed tasks with all reward details.
+     * @returns any
+     * @throws ApiError
+     */
+    public static ticktickHistory(): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/ticktick/history/',
+        });
+    }
+    /**
+     * Returns daily aggregated XP and Coin stats for the last 30 days.
+     * @returns any
+     * @throws ApiError
+     */
+    public static ticktickProgression(): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/ticktick/progression/',
+        });
+    }
+    /**
      * @returns any
      * @throws ApiError
      */
@@ -32,9 +54,9 @@ export class TicktickService {
          * @returns any
          * @throws ApiError
          */
-        public static ticktickWebhookList(): CancelablePromise<any> {
+        public static ticktickWebhookCreate(): CancelablePromise<any> {
             return __request(OpenAPI, {
-                method: 'GET',
+                method: 'POST',
                 url: '/ticktick/webhook/',
             });
         }

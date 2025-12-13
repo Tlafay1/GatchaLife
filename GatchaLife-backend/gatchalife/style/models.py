@@ -62,6 +62,12 @@ class Theme(models.Model):
     integration_idea = models.TextField(
         blank=True, help_text="Rappel sur comment intégrer le personnage"
     )
+    vibe_tags = models.JSONField(
+        default=list, blank=True, help_text="Mots-clés de l'ambiance (ex: ['sacred', 'colorful light'])"
+    )
+    base_rarity_tier = models.PositiveIntegerField(
+        default=1, help_text="1=Basic, 5=Legendary"
+    )
     unlock_level = models.PositiveIntegerField(default=1)
 
     def __str__(self):

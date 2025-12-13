@@ -1,14 +1,14 @@
 /* generated using openapi-typescript-codegen -- do not edit */
 /* istanbul ignore file */
 /* tslint:disable */
- 
+/* eslint-disable */
 export { ApiError } from './core/ApiError';
 export { CancelablePromise, CancelError } from './core/CancelablePromise';
 export { OpenAPI } from './core/OpenAPI';
 export type { OpenAPIConfig } from './core/OpenAPI';
 
 export type { Card } from './models/Card';
-export type { Character } from './models/Character';
+export { Character } from './models/Character';
 export type { CharacterVariant } from './models/CharacterVariant';
 export type { GeneratedImage } from './models/GeneratedImage';
 export type { Player } from './models/Player';
