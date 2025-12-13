@@ -8,7 +8,7 @@ from gatchalife.character.models import CharacterVariant
 from gatchalife.style.models import Rarity, Style, Theme
 import random
 import structlog
-from gatchalife.generated_image.services import generate_image
+from gatchalife.generated_image.services import generate_image, match_card_configuration
 from gatchalife.generated_image.models import GeneratedImage
 
 logger = structlog.get_logger(__name__)
