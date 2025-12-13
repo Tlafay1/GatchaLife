@@ -15,6 +15,9 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+      workbox: {
+        navigateFallbackDenylist: [/^\/api/, /^\/admin/, /^\/Admin/, /^\/static/, /^\/images/]
+      },
       manifest: {
         name: 'GatchaLife',
         short_name: 'GatchaLife',
