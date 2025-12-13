@@ -111,6 +111,204 @@ class CollectionViewSet(viewsets.ReadOnlyModelViewSet):
                 {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+    def list(self, request, *args, **kwargs):
+        show_all = request.query_params.get("show_all") == "true"
+        if not show_all:
+            return super().list(request, *args, **kwargs)
+
+        # --- Show All Logic ---
+        player = get_default_player()
+
+        # 1. Fetch base variants (applying character/series filters)
+        variants_qs = CharacterVariant.objects.filter(
+            legacy=False, character__legacy=False
+        ).select_related("character")
+
+        series_param = request.query_params.get("series")
+        if series_param:
+            variants_qs = variants_qs.filter(character__series__name=series_param)
+
+        character_param = request.query_params.get("character")
+        if character_param:
+            variants_qs = variants_qs.filter(character__name__icontains=character_param)
+
+        # 2. Fetch owned cards for mapping
+        owned_user_cards = UserCard.objects.filter(player=player).select_related(
+            "card",
+            "card__character_variant",
+            "card__character_variant__character",
+            "card__rarity",
+            "card__style",
+            "card__theme",
+        )
+
+        # Map (VariantID, RarityName, StyleName, ThemeName) -> UserCard instance
+        owned_map = {}
+        for uc in owned_user_cards:
+            c = uc.card
+            key = (
+                c.character_variant_id,
+                c.rarity.name.upper(),
+                c.style.name if c.style else None,
+                c.theme.name if c.theme else None,
+            )
+            owned_map[key] = uc
+
+        # 3. Build comprehensive list
+        combined_list = []
+
+        # Pre-fetch Rarity/Style/Theme objects for name lookup to ensure consistency if needed
+        # But for constructing the "virtual" card, strings might be enough if Serializer handles it
+        # Actually, we need to manually construct the dict to match Serializer output
+
+        for variant in variants_qs:
+            configs = variant.card_configurations_data or []
+            for config in configs:
+                if config.get("legacy"):
+                    continue
+
+                r_name = config.get("rarity", "").upper()
+                s_name = config.get("style", {}).get("name")
+                t_name = config.get("theme", {}).get("name")
+
+                # Apply filters (Rarity, Style, Theme)
+                if (
+                    request.query_params.get("rarity")
+                    and request.query_params.get("rarity").upper() != r_name
+                ):
+                    continue
+                if (
+                    request.query_params.get("style")
+                    and request.query_params.get("style") != s_name
+                ):
+                    continue
+                if (
+                    request.query_params.get("theme")
+                    and request.query_params.get("theme") != t_name
+                ):
+                    continue
+
+                key = (variant.id, r_name, s_name, t_name)
+
+                if key in owned_map:
+                    # User owns it - serialize normally
+                    serializer = self.get_serializer(owned_map[key])
+                    combined_list.append(serializer.data)
+                else:
+                    # User doesn't own it - create placeholder
+                    # We manually mock the UserCardSerializer structure
+                    combined_list.append(
+                        {
+                            "id": None,  # Virtual
+                            "count": 0,
+                            "obtained_at": None,
+                            "card": {
+                                "id": None,
+                                "character_variant": variant.id,
+                                "character_variant_name": variant.name,
+                                "character_name": variant.character.name,
+                                "series_name": variant.character.series.name
+                                if variant.character.series
+                                else "Unknown",
+                                "rarity_name": r_name,
+                                "style_name": s_name,
+                                "theme_name": t_name,
+                                "image_url": None,  # Placeholder trigger
+                                "visual_override": variant.visual_override,
+                                "description": variant.description,
+                                "is_archived": False,
+                            },
+                        }
+                    )
+
+        # 4. Pagination (Manual)
+        page = self.paginate_queryset(combined_list)
+        if page is not None:
+            return self.get_paginated_response(page)
+
+        return Response(combined_list)
+
+    @action(detail=False, methods=["get"])
+    def preview(self, request):
+        variant_id = request.query_params.get("variant_id")
+        rarity_name = request.query_params.get("rarity")
+        style_name = request.query_params.get("style")
+        theme_name = request.query_params.get("theme")
+
+        if not all([variant_id, rarity_name]):
+            return Response({"error": "Missing params"}, status=400)
+
+        try:
+            variant = CharacterVariant.objects.get(id=variant_id)
+        except CharacterVariant.DoesNotExist:
+            return Response({"error": "Variant not found"}, status=404)
+
+        configs = variant.card_configurations_data or []
+        target_config = None
+        for c in configs:
+            if (
+                c.get("rarity", "").upper() == rarity_name.upper()
+                and c.get("style", {}).get("name") == style_name
+                and c.get("theme", {}).get("name") == theme_name
+            ):
+                target_config = c
+                break
+
+        if not target_config:
+            return Response({"error": "Configuration not found"}, status=404)
+
+        # Mock response
+        data = {
+            "id": None,
+            "count": 0,
+            "obtained_at": None,
+            "card": {
+                "id": None,
+                "character_variant": variant.id,
+                "character_variant_name": variant.name,
+                "character_name": variant.character.name,
+                "series_name": variant.character.series.name
+                if variant.character.series
+                else "Unknown",
+                "rarity_name": rarity_name,
+                "style_name": style_name,
+                "theme_name": theme_name,
+                "image_url": None,
+                "visual_override": variant.visual_override,
+                "description": variant.description,
+                "pose": target_config.get("pose"),
+                "is_archived": False,
+            },
+        }
+
+        rarity_obj = Rarity.objects.filter(name__iexact=rarity_name).first()
+        style_obj = Style.objects.filter(name=style_name).first()
+        theme_obj = Theme.objects.filter(name=theme_name).first()
+
+        # Careful: Style/Theme might be None if user passed 'None' string or empty, but logic above handles names.
+        # If objects found, try to correct data with real card info if exists
+        if rarity_obj:
+            filters = {
+                "character_variant": variant,
+                "rarity": rarity_obj,
+            }
+            if style_obj:
+                filters["style"] = style_obj
+            if theme_obj:
+                filters["theme"] = theme_obj
+
+            real_card = Card.objects.filter(**filters).first()
+
+            if real_card:
+                from .serializers import (
+                    CardSerializer,
+                )  # Import here to avoid circular if any
+
+                serializer = CardSerializer(real_card, context={"request": request})
+                data["card"] = serializer.data
+
+        return Response(data)
+
     def filter_queryset(self, queryset):
         queryset = super().filter_queryset(queryset)
         

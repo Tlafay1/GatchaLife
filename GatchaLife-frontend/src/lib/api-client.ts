@@ -408,6 +408,17 @@ export const useCardDetails = (id: number) => useQuery({
   enabled: !!id,
 });
 
+export const useCardPreview = (params: Record<string, string>) => useQuery({
+  queryKey: ['card_preview', params],
+  queryFn: async () => {
+    const query = new URLSearchParams(params);
+    const response = await fetch(`${OpenAPI.BASE}/gamification/collection/preview/?${query.toString()}`);
+    if (!response.ok) throw new Error('Failed to fetch card preview');
+    return response.json();
+  },
+  enabled: !!params.variant_id && !!params.rarity,
+});
+
 export const useRerollCardImage = () => {
   const queryClient = useQueryClient();
   return useMutation({

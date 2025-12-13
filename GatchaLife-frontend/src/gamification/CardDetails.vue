@@ -1,13 +1,21 @@
 <script setup lang="ts">
-import { useCardDetails, useRerollCardImage } from '@/lib/api-client';
+import { useCardDetails, useRerollCardImage, useCardPreview } from '@/lib/api-client';
 import { useRoute } from 'vue-router';
-import { ref } from 'vue';
-import { Maximize2, X, RefreshCw, Loader2 } from 'lucide-vue-next';
+import { ref, computed } from 'vue';
+import { Maximize2, X, RefreshCw, Loader2, Lock } from 'lucide-vue-next';
 
 const route = useRoute();
 const cardId = Number(route.params.id);
+const isPreview = route.name === 'card-preview';
 
-const { data: item, isLoading } = useCardDetails(cardId);
+const { data: detailsData, isLoading: detailsLoading } = useCardDetails(isNaN(cardId) ? 0 : cardId);
+// Ensure we pass string params correctly
+const previewParams = computed(() => route.query as Record<string, string>);
+const { data: previewData, isLoading: previewLoading } = useCardPreview(isPreview ? previewParams.value : {});
+
+const item = computed(() => isPreview ? previewData.value : detailsData.value);
+const isLoading = computed(() => isPreview ? previewLoading.value : detailsLoading.value);
+
 const { mutate: rerollImage, isPending: isRerolling } = useRerollCardImage();
 const isFullScreen = ref(false);
 
@@ -48,27 +56,40 @@ const rarityColor = (rarity: string) => {
         <div class="flex flex-col gap-4">
           <div
             class="relative aspect-[2/3] bg-gray-900 rounded-xl border-4 shadow-2xl overflow-hidden group cursor-pointer"
-            :class="rarityColor(item.card.rarity_name)" @click="isFullScreen = true">
-            <img v-if="item.card.image_url" :src="item.card.image_url"
-              class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-            <div v-else class="w-full h-full flex items-center justify-center text-muted-foreground">
-              No Image
-            </div>
+            :class="rarityColor(item.card.rarity_name)" @click="item.card.image_url ? isFullScreen = true : null">
+            <template v-if="item.card.image_url">
+                <img :src="item.card.image_url"
+                class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+            </template>
+            <template v-else>
+               <div class="w-full h-full bg-slate-900 flex flex-col items-center justify-center p-4 text-center select-none bg-[radial-gradient(#333_1px,transparent_1px)] [background-size:16px_16px]">
+                  <div class="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mb-4 border border-slate-700">
+                    <Lock class="w-8 h-8 text-slate-500" />
+                  </div>
+                  <span class="text-xs uppercase font-bold text-slate-500 tracking-widest">Locked</span>
+               </div>
+            </template>
           </div>
 
-          <button @click="handleReroll" :disabled="isRerolling"
-            class="w-full py-3 bg-secondary hover:bg-secondary/80 rounded-lg font-bold flex items-center justify-center gap-2 transition-all disabled:opacity-50">
+          <button @click="handleReroll" :disabled="isRerolling || item.count === 0"
+            class="w-full py-3 bg-secondary hover:bg-secondary/80 rounded-lg font-bold flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
             <Loader2 v-if="isRerolling" class="w-4 h-4 animate-spin" />
             <RefreshCw v-else class="w-4 h-4" />
             {{ isRerolling ? 'Regenerating...' : 'Regenerate Image' }}
           </button>
+          <p v-if="item.count === 0" class="text-xs text-center text-muted-foreground">You must own this card to generate its image.</p>
         </div>
 
         <!-- Details -->
         <div class="space-y-8">
           <div>
-            <div class="text-sm font-bold uppercase tracking-wider opacity-70 mb-2" :class="rarityColor(item.card.rarity_name).split(' ')[0]">
-              {{ item.card.rarity_name }}
+            <div class="flex items-center gap-2 mb-2">
+                 <div class="text-sm font-bold uppercase tracking-wider opacity-70" :class="rarityColor(item.card.rarity_name).split(' ')[0]">
+                  {{ item.card.rarity_name }}
+                </div>
+                <div v-if="item.count === 0" class="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-[10px] uppercase font-bold text-slate-400">
+                    Locked
+                </div>
             </div>
             <h1 class="text-4xl font-bold mb-2">{{ item.card.character_variant_name }}</h1>
             <div class="text-xl text-muted-foreground">{{ item.card.character_name }}</div>
@@ -104,12 +125,13 @@ const rarityColor = (rarity: string) => {
           <div class="bg-card border border-border rounded-lg p-6">
             <div class="flex justify-between items-center mb-4">
               <div class="font-bold text-lg">Collection Stats</div>
-              <div class="bg-secondary text-secondary-foreground px-3 py-1 rounded-full text-sm font-bold">
-                x{{ item.count }} Owned
+              <div class="px-3 py-1 rounded-full text-sm font-bold"
+                 :class="item.count > 0 ? 'bg-secondary text-secondary-foreground' : 'bg-muted text-muted-foreground'">
+                {{ item.count > 0 ? `x${item.count} Owned` : 'Not Owned' }}
               </div>
             </div>
             <div class="text-sm text-muted-foreground">
-              Obtained on {{ new Date(item.obtained_at).toLocaleDateString() }}
+              {{ item.count > 0 ? `Obtained on ${new Date(item.obtained_at).toLocaleDateString()}` : 'You have not discovered this card yet.' }}
             </div>
           </div>
         </div>

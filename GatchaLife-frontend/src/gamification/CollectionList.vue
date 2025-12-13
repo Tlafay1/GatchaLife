@@ -8,7 +8,7 @@ import {
 } from '@/lib/api-client';
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import { Search, FilterX, SlidersHorizontal, ChevronDown, ChevronUp, Maximize2, X } from 'lucide-vue-next';
+import { Search, FilterX, SlidersHorizontal, ChevronDown, ChevronUp, Maximize2, X, Lock } from 'lucide-vue-next';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -27,7 +27,9 @@ const filters = ref({
   series: 'all',
   series: 'all',
   character: '', // Search by name
+  character: '', // Search by name
   showArchived: false,
+  showAll: true, // Default to true as requested
 });
 
 const groupBy = ref('series'); // Default group by
@@ -41,7 +43,22 @@ const apiFilters = computed(() => {
   if (f.theme === 'all') f.theme = '';
   if (f.style === 'all') f.style = '';
   if (f.series === 'all') f.series = '';
-  return f;
+  if (f.series === 'all') f.series = '';
+  // Pass showAll as 'true'/'false' string if needed by backend, or just let API client handle it
+  // But wait, useCollection uses apiFilters as query params.
+  // We need to add show_all to apiFilters mapping if the API client just passes it through.
+  // The API client (useCollection) likely takes these ref values.
+  // We need to map camelCase showAll to snake_case show_all for Django backend.
+  const params: any = { ...f };
+  delete params.showAll;
+  delete params.showArchived; 
+  // We handle showArchived locally in frontend filtering (lines 76-78), 
+  // BUT showAll is a backend param now.
+  // Actually, wait. showArchived is frontend filter. showAll is backend param.
+  
+  if (f.showAll) params.show_all = 'true';
+  
+  return params;
 });
 
 const { data: collection, isLoading } = useCollection(apiFilters);
@@ -130,8 +147,20 @@ const rarityColor = (rarity: string) => {
   }
 };
 
-const goToDetails = (id: number) => {
-  router.push(`/collection/${id}`);
+const goToDetails = (item: any) => {
+  if (item.card.id) {
+     router.push(`/collection/${item.card.id}`);
+  } else {
+     router.push({
+        path: '/collection/preview',
+        query: {
+           variant_id: item.card.character_variant,
+           rarity: item.card.rarity_name,
+           style: item.card.style_name,
+           theme: item.card.theme_name
+        }
+     });
+  }
 };
 
 const openFullScreen = (item: any) => {
@@ -199,6 +228,11 @@ const closeFullScreen = () => {
         <div class="flex items-center space-x-2 px-2 pb-2">
            <input type="checkbox" id="show-archived" v-model="filters.showArchived" class="h-4 w-4 rounded border-input" />
            <Label for="show-archived" class="text-sm cursor-pointer">Show Archived Cards</Label>
+        </div>
+        
+        <div class="flex items-center space-x-2 px-2 pb-2">
+           <input type="checkbox" id="show-all" v-model="filters.showAll" class="h-4 w-4 rounded border-input" />
+           <Label for="show-all" class="text-sm cursor-pointer">Show Uncollected Cards</Label>
         </div>
 
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2 border-t border-border/50">
@@ -277,16 +311,29 @@ const closeFullScreen = () => {
 
           <!-- Cards Grid -->
           <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-            <div v-for="item in items" :key="item.id" @click="goToDetails(item.id)"
+            <div v-for="item in items" :key="item.id" @click="goToDetails(item)"
               class="group relative aspect-[2/3] bg-card rounded-xl border-2 overflow-hidden transition-all hover:scale-105 hover:z-10 cursor-pointer block"
               :class="[rarityColor(item.card.rarity_name), item.card.is_archived ? 'grayscale-[0.7] opacity-90' : '']">
               <!-- Image -->
-              <div class="absolute inset-0 bg-muted">
-                <img v-if="item.card.image_url" :src="item.card.image_url"
-                  class="w-full h-full object-cover transition-transform group-hover:scale-110" loading="lazy" />
-                <div v-else class="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
-                  Generating...
-                </div>
+              <div class="absolute inset-0 bg-muted flex items-center justify-center overflow-hidden">
+                <template v-if="item.count > 0 && item.card.image_url">
+                  <img :src="item.card.image_url"
+                    class="w-full h-full object-cover transition-transform group-hover:scale-110" loading="lazy" />
+                </template>
+                <template v-else-if="item.count > 0">
+                   <div class="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
+                    Generating...
+                  </div>
+                </template>
+                <template v-else>
+                   <!-- Locked / Placeholder State -->
+                   <div class="w-full h-full bg-slate-900 flex flex-col items-center justify-center p-4 text-center select-none bg-[radial-gradient(#333_1px,transparent_1px)] [background-size:16px_16px]">
+                      <div class="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center mb-2 border border-slate-700">
+                        <Lock class="w-5 h-5 text-slate-500" />
+                      </div>
+                      <span class="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Locked</span>
+                   </div>
+                </template>
               </div>
 
               <!-- Overlay Info -->
