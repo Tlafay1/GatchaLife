@@ -1,6 +1,10 @@
 import random
 from rest_framework import serializers
 
+import structlog
+
+logger = structlog.get_logger(__name__)
+
 from .models import GeneratedImage
 from .services import generate_image
 from gatchalife.style.models import Style, Rarity, Theme
@@ -27,14 +31,28 @@ class GeneratedImageSerializer(serializers.ModelSerializer):
             .order_by("-min_roll_threshold")
             .first()
         )
+        logger.info(
+            "Rarity rolled",
+            rarity=rarity.name,
+            variant=validated_data["character_variant"].name,
+        )
 
         variant = validated_data["character_variant"]
         configs = variant.card_configurations_data or []
+        logger.debug(
+            "Available configurations", variant=variant.name, total_configs=len(configs)
+        )
 
         # Filter configs for the rolled rarity
         matching_configs = [
             c for c in configs if c.get("rarity", "").upper() == rarity.name.upper()
         ]
+        logger.debug(
+            "Matching configurations found for rarity",
+            variant=variant.name,
+            rarity=rarity.name,
+            num_matching=len(matching_configs),
+        )
 
         pose = None
         style = None
@@ -50,16 +68,30 @@ class GeneratedImageSerializer(serializers.ModelSerializer):
 
             if style_name:
                 style = Style.objects.filter(
-                    name__iexact=style_name, rarity=rarity
+                    name__iexact=style_name.strip(), rarity=rarity
                 ).first()
             if theme_name:
-                theme = Theme.objects.filter(name__iexact=theme_name).first()
+                theme = Theme.objects.filter(name__iexact=theme_name.strip()).first()
+
+            logger.info(
+                "Matched configuration",
+                variant=variant.name,
+                rarity=rarity.name,
+                pose=pose,
+                style=style_name,
+                theme=theme_name,
+            )
+        else:
+            logger.info(
+                "No matching configuration for rarity",
+                variant=variant.name,
+                rarity=rarity.name,
+            )
 
         # Fallbacks
         if not style:
             style = Style.objects.filter(rarity=rarity).order_by("?").first()
-            # If we fall back on style, the pose might not match, but let's keep it if we have nothing else
-            # Or reset it? Safer to reset if style changed significantly, but here we assume sync.
+            # If we fall back on style due to lookup fail or no config, preserve pose if it was set
 
         if not theme:
             theme = Theme.objects.order_by("?").first()
