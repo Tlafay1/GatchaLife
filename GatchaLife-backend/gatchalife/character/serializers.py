@@ -24,6 +24,7 @@ class CharacterVariantSerializer(serializers.ModelSerializer):
             "variant_type",
             "specific_reference_image",
             "card_configurations_data",
+            "legacy",
         ]
 
 

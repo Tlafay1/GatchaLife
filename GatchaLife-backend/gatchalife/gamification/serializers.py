@@ -22,6 +22,9 @@ class PlayerQuestSerializer(serializers.ModelSerializer):
         fields = ['id', 'quest', 'progress', 'completed', 'claimed']
         read_only_fields = ['completed', 'claimed']
 
+from gatchalife.generated_image.services import match_card_configuration
+
+
 class CardSerializer(serializers.ModelSerializer):
     character_variant_name = serializers.CharField(source='character_variant.name', read_only=True)
     character_name = serializers.CharField(source='character_variant.character.name', read_only=True)
@@ -33,10 +36,43 @@ class CardSerializer(serializers.ModelSerializer):
     pose = serializers.SerializerMethodField()
     visual_override = serializers.CharField(source='character_variant.visual_override', read_only=True)
     description = serializers.CharField(source='character_variant.description', read_only=True)
+    is_archived = serializers.SerializerMethodField()
 
     class Meta:
         model = Card
-        fields = ['id', 'character_variant', 'character_variant_name', 'character_name', 'series_name', 'rarity', 'rarity_name', 'style', 'style_name', 'theme', 'theme_name', 'image_url', 'pose', 'visual_override', 'description']
+        fields = [
+            "id",
+            "character_variant",
+            "character_variant_name",
+            "character_name",
+            "series_name",
+            "rarity",
+            "rarity_name",
+            "style",
+            "style_name",
+            "theme",
+            "theme_name",
+            "image_url",
+            "pose",
+            "visual_override",
+            "description",
+            "is_archived",
+        ]
+
+    def get_is_archived(self, obj):
+        matched_config = match_card_configuration(
+            obj.character_variant, obj.rarity, obj.style, obj.theme
+        )
+        is_config_legacy = (
+            matched_config.get("legacy", False) if matched_config else False
+        )
+
+        return (
+            obj.legacy
+            or obj.character_variant.legacy
+            or obj.character_variant.character.legacy
+            or is_config_legacy
+        )
 
     def get_image_url(self, obj):
         # Logic to find the generated image for this card

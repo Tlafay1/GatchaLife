@@ -6,10 +6,16 @@
         <h1 class="text-3xl font-bold tracking-tight">{{ isEditMode ? 'Edit Character' : 'Character Forge' }}</h1>
         <p class="text-muted-foreground">Define entities for AI generation rewards.</p>
       </div>
-      <Button @click="onSubmit" :disabled="isSaving || isUploading">
-        <Save class="w-4 h-4 mr-2" />
-        {{ buttonLabel }}
-      </Button>
+      <div class="flex items-center gap-4">
+        <div v-if="isEditMode" class="flex items-center space-x-2 border px-3 py-2 rounded-md bg-background">
+          <input type="checkbox" id="legacy-mode" v-model="form.legacy" class="h-4 w-4 rounded border-input" />
+          <Label for="legacy-mode" class="cursor-pointer">Archived</Label>
+        </div>
+        <Button @click="onSubmit" :disabled="isSaving || isUploading">
+          <Save class="w-4 h-4 mr-2" />
+          {{ buttonLabel }}
+        </Button>
+      </div>
     </div>
 
     <!-- CREATION MODE: Simple Entry -->
@@ -377,7 +383,9 @@ const form = reactive<LocalFormState>({
   lore_tags: '[]',
   affinity_environments: '[]',
   clashing_environments: '[]',
-  negative_traits_suggestion: ''
+  clashing_environments: '[]',
+  negative_traits_suggestion: '',
+  legacy: false
 })
 
 const variantsToDelete = ref<number[]>([])
@@ -403,7 +411,9 @@ watch(characterData, (newChar) => {
     form.lore_tags = JSON.stringify(newChar.lore_tags || [], null, 2)
     form.affinity_environments = JSON.stringify(newChar.affinity_environments || [], null, 2)
     form.clashing_environments = JSON.stringify(newChar.clashing_environments || [], null, 2)
+    form.clashing_environments = JSON.stringify(newChar.clashing_environments || [], null, 2)
     form.negative_traits_suggestion = newChar.negative_traits_suggestion || ''
+    form.legacy = newChar.legacy || false
 
     form.variants = (newChar.variants || []).map(v => ({
       id: v.id,
@@ -411,6 +421,7 @@ watch(characterData, (newChar) => {
       description: v.description || '',
       visual_override: v.visual_override || '',
       variant_type: (v.variant_type as any) || 'SKIN',
+      legacy: v.legacy || false,
       card_configurations: v.card_configurations_data || [],
       images: (v.images || []).map(img => ({
         id: img.id,
@@ -570,6 +581,7 @@ const onSubmit = async () => {
         series: parseInt(form.series),
         description: form.base_description,
         unlock_level: form.unlock_level,
+        legacy: form.legacy,
         // New Fields
         body_type_description: form.body_type_description,
         height_perception: form.height_perception || null,
@@ -630,6 +642,7 @@ const onSubmit = async () => {
           description: variant.description,
           visual_override: variant.visual_override,
           variant_type: variant.variant_type,
+          legacy: variant.legacy,
           card_configurations_data: variant.card_configurations
         }
 

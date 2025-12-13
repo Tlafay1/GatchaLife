@@ -166,12 +166,21 @@ class GatchaViewSet(viewsets.ViewSet):
 
         # --- STEP 1: Determine Drop Outcomes ---
         # Pre-fetch all variants with their configs to avoid N+1 equivalent in loop
-        all_variants = list(CharacterVariant.objects.filter(character__legacy=False).select_related('character'))
+        # Exclude legacy characters and legacy variants
+        all_variants = list(
+            CharacterVariant.objects.filter(
+                character__legacy=False, legacy=False
+            ).select_related("character")
+        )
         
         # Map rarity names for easier lookup
         # Assuming Rarity.name matches the keys in JSON (e.g. "COMMON", "RARE") case-insensitivity might be needed
-        
-        for _ in range(5):
+
+        attempts = 0
+        max_attempts = 20  # Safety break
+
+        while len(drops_data) < 5 and attempts < max_attempts:
+            attempts += 1
             # ... (Roll Logic kept same) ...
             base_roll = random.randint(1, 100)
             level_bonus = min(player.level * 0.5, 20.0)
@@ -190,41 +199,33 @@ class GatchaViewSet(viewsets.ViewSet):
             for v in all_variants:
                 configs = v.card_configurations_data
                 for c in configs:
-                    if c.get('rarity', '').upper() == selected_rarity.name.upper():
-                        valid_cards.append({
-                            "variant": v,
-                            "config": c
-                        })
-            
-            # Fallback: if no specific config found for this rarity, use any variant?
-            # Or fallback to previous logic of "pick any variant" but treating it as a new "Common" card?
-            # For strictness, if no valid_cards, we have a problem (empty pool for this rarity).
-            # But earlier code had fallbacks. Let's keep a robust fallback.
-            
+                    if c.get(
+                        "rarity", ""
+                    ).upper() == selected_rarity.name.upper() and not c.get("legacy"):
+                        valid_cards.append({"variant": v, "config": c})
+
             if not valid_cards:
-                # Fallback: Pick any variant from valid ones for this rarity 
-                # (Wait, if valid_cards is empty, no variant has this rarity config)
-                # So we must pick ANY variant and ANY config (preferably closest rarity)
-                # But realistically this should not happen if pool is populated.
-                # Let's just pick random variant and random config.
+                # Fallback: Pick any variant from valid ones for this rarity
                 selection = {
-                     "variant": random.choice(all_variants) if all_variants else None,
-                     "config": {}
+                    "variant": random.choice(all_variants) if all_variants else None,
+                    "config": {},
                 }
                 if selection["variant"]:
-                     configs = selection["variant"].card_configurations_data
-                     selection["config"] = random.choice(configs) if configs else {}
+                    configs = selection["variant"].card_configurations_data or []
+                    valid_configs = [c for c in configs if not c.get("legacy")]
+                    selection["config"] = (
+                        random.choice(valid_configs) if valid_configs else {}
+                    )
             else:
-                 selection = random.choice(valid_cards)
-            
+                selection = random.choice(valid_cards)
+
             if not selection.get("variant"):
-                 continue
+                continue
 
             variant = selection["variant"]
             target_config = selection["config"]
-            
+
             # Resolve Style and Theme from Config
-            # They should exist in DB because of update_variants_from_ai
             style_name = target_config.get('style', {}).get('name')
             theme_name = target_config.get('theme', {}).get('name')
             pose_prompt = target_config.get('pose', '')
@@ -233,19 +234,32 @@ class GatchaViewSet(viewsets.ViewSet):
             theme = None
             
             if style_name:
-                style = Style.objects.filter(name=style_name, rarity=selected_rarity).first()
-                # If not found for specific rarity, try loose match but prefer Rarity match
+                style = Style.objects.filter(
+                    name=style_name, rarity=selected_rarity
+                ).first()
                 if not style:
                      style = Style.objects.filter(name=style_name).first()
 
             if theme_name:
                 theme = Theme.objects.filter(name=theme_name).first()
-            
-            # Double Fallback if not found (should not happen if synced)
+
+            # Double Fallback if not found
             if not style:
                 style = Style.objects.filter(rarity=selected_rarity).first() or Style.objects.first()
             if not theme:
                 theme = Theme.objects.first()
+
+            # Check if this specific card combination is archived (legacy)
+            existing_card = Card.objects.filter(
+                character_variant=variant,
+                rarity=selected_rarity,
+                style=style,
+                theme=theme,
+            ).first()
+
+            if existing_card and existing_card.legacy:
+                logger.info("Skipping legacy card drop", card=existing_card)
+                continue
 
             drops_data.append({
                 "variant": variant,

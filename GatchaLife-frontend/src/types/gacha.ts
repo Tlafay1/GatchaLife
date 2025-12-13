@@ -10,18 +10,29 @@ export interface LocalVariantImage {
   is_new?: boolean;  // Flag for new uploads
 }
 
+export interface CardConfiguration {
+  rarity: string;
+  pose: string;
+  theme?: { name: string;[key: string]: any };
+  style?: { name: string;[key: string]: any };
+  legacy?: boolean;
+  [key: string]: any;
+}
+
 export interface LocalVariantForm {
   id?: number;       // Existing variant ID
   name: string;
   description: string;    // Narrative description (was visual_description)
   visual_override: string; // Technical prompt
   variant_type: 'CANON' | 'SKIN';
-  card_configurations: any[]; // JSON data for card configurations (rarity, pose, theme, style)
+  legacy?: boolean;
+  card_configurations: CardConfiguration[]; // JSON data for card configurations (rarity, pose, theme, style)
   images: LocalVariantImage[];
 }
 
 export interface CharacterFormState {
   name: string;
+  legacy?: boolean;
   series: string; // String to handle Select value binding
   base_description: string;
   variants: LocalVariantForm[];

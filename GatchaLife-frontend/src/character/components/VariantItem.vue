@@ -16,6 +16,17 @@
             {{ modelValue.variant_type }}
           </span>
         </CardTitle>
+      <div class="flex items-center gap-3">
+        <div class="flex items-center space-x-2 border px-2 py-1 rounded bg-background/50">
+          <input 
+            type="checkbox" 
+            :id="`legacy-variant-${modelValue.id || 'new'}`" 
+            :checked="modelValue.legacy" 
+            @change="(e) => updateField('legacy', (e.target as HTMLInputElement).checked)"
+            class="h-3 w-3 rounded border-input" 
+          />
+          <Label :for="`legacy-variant-${modelValue.id || 'new'}`" class="text-xs cursor-pointer">Archived</Label>
+        </div>
         <Button 
           variant="ghost" 
           size="sm" 
@@ -25,6 +36,7 @@
           <Trash2 class="w-4 h-4 mr-2" /> Remove
         </Button>
       </div>
+    </div>
     </CardHeader>
 
     <CardContent class="grid gap-4">
@@ -64,9 +76,11 @@
             <div class="col-span-2">Rarity</div>
             <div class="col-span-3">Theme</div>
             <div class="col-span-3">Style</div>
-            <div class="col-span-4">Pose</div>
+            <div class="col-span-3">Pose</div>
+            <div class="col-span-1 text-center">Legacy</div>
           </div>
-          <div v-for="(config, idx) in modelValue.card_configurations" :key="idx" class="grid grid-cols-12 gap-2 p-2 border-b last:border-0 hover:bg-muted/20 items-center">
+          <div v-for="(config, idx) in modelValue.card_configurations" :key="idx" 
+               :class="['grid grid-cols-12 gap-2 p-2 border-b last:border-0 hover:bg-muted/20 items-center', config.legacy ? 'opacity-50 grayscale bg-muted/30' : '']">
             <div class="col-span-2">
               <span :class="['px-1.5 py-0.5 rounded text-[10px] uppercase font-bold border', 
                 config.rarity === 'COMMON' ? 'bg-slate-100 text-slate-600 border-slate-200' :
@@ -76,7 +90,16 @@
             </div>
             <div class="col-span-3 font-medium truncate" :title="config.theme?.name">{{ config.theme?.name || '-' }}</div>
             <div class="col-span-3 truncate" :title="config.style?.name">{{ config.style?.name || '-' }}</div>
-            <div class="col-span-4 text-muted-foreground truncate italic" :title="config.pose">{{ config.pose || '-' }}</div>
+            <div class="col-span-3 text-muted-foreground truncate italic" :title="config.pose">{{ config.pose || '-' }}</div>
+            <div class="col-span-1 flex justify-center">
+               <input 
+                 type="checkbox" 
+                 :checked="config.legacy" 
+                 @change="toggleConfigLegacy(idx)"
+                 class="h-3 w-3 rounded border-input cursor-pointer"
+                 title="Archive this configuration"
+               />
+            </div>
           </div>
         </div>
       </div>
@@ -144,11 +167,17 @@ const emit = defineEmits<{
   (e: 'remove'): void
 }>()
 
-const updateField = (field: keyof LocalVariantForm, value: string) => {
+const updateField = (field: keyof LocalVariantForm, value: string | boolean) => {
   emit('update:modelValue', {
     ...props.modelValue,
     [field]: value
   })
+}
+
+const toggleConfigLegacy = (index: number) => {
+  const configs = [...props.modelValue.card_configurations]
+  configs[index] = { ...configs[index], legacy: !configs[index].legacy }
+  emit('update:modelValue', { ...props.modelValue, card_configurations: configs })
 }
 
 const getPreview = (imgObj: LocalVariantImage) => {

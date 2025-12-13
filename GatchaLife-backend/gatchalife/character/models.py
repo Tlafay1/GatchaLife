@@ -95,6 +95,7 @@ class CharacterVariant(models.Model):
     card_configurations_data = models.JSONField(
         default=list, blank=True, help_text="AI generated card configurations (rarity, pose, theme, style)"
     )
+    legacy = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.character.name} ({self.name})"

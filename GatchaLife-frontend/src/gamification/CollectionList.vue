@@ -25,7 +25,9 @@ const filters = ref({
   theme: 'all',
   style: 'all',
   series: 'all',
+  series: 'all',
   character: '', // Search by name
+  showArchived: false,
 });
 
 const groupBy = ref('series'); // Default group by
@@ -54,7 +56,9 @@ const resetFilters = () => {
     theme: 'all',
     style: 'all',
     series: 'all',
+    series: 'all',
     character: '',
+    showArchived: false,
   };
   groupBy.value = 'series';
 };
@@ -69,6 +73,11 @@ const groupedCollection = computed(() => {
   const groups: Record<string, any[]> = {};
 
   collection.value.forEach((item: any) => {
+    // Filter Archived
+    if (!filters.value.showArchived && item.card.is_archived) {
+      return;
+    }
+
     let key = 'Other';
     const card = item.card;
 
@@ -186,6 +195,11 @@ const closeFullScreen = () => {
             Reset
           </Button>
         </div>
+        
+        <div class="flex items-center space-x-2 px-2 pb-2">
+           <input type="checkbox" id="show-archived" v-model="filters.showArchived" class="h-4 w-4 rounded border-input" />
+           <Label for="show-archived" class="text-sm cursor-pointer">Show Archived Cards</Label>
+        </div>
 
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2 border-t border-border/50">
           <!-- Rarity -->
@@ -265,7 +279,7 @@ const closeFullScreen = () => {
           <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
             <div v-for="item in items" :key="item.id" @click="goToDetails(item.id)"
               class="group relative aspect-[2/3] bg-card rounded-xl border-2 overflow-hidden transition-all hover:scale-105 hover:z-10 cursor-pointer block"
-              :class="rarityColor(item.card.rarity_name)">
+              :class="[rarityColor(item.card.rarity_name), item.card.is_archived ? 'grayscale opacity-80' : '']">
               <!-- Image -->
               <div class="absolute inset-0 bg-muted">
                 <img v-if="item.card.image_url" :src="item.card.image_url"
@@ -287,6 +301,10 @@ const closeFullScreen = () => {
               <div v-if="item.count > 1"
                 class="absolute top-2 left-2 bg-black/60 backdrop-blur text-white text-xs font-bold px-2 py-1 rounded-full border border-white/20 z-20">
                 x{{ item.count }}
+              </div>
+              <div v-if="item.card.is_archived"
+                class="absolute top-2 right-2 bg-neutral-800/80 backdrop-blur text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded border border-white/10 z-20">
+                Legacy
               </div>
             </div>
           </div>

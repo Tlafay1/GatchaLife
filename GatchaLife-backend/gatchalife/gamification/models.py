@@ -46,6 +46,7 @@ class Card(models.Model):
     rarity = models.ForeignKey(Rarity, on_delete=models.CASCADE)
     style = models.ForeignKey(Style, on_delete=models.CASCADE)
     theme = models.ForeignKey(Theme, on_delete=models.CASCADE)
+    legacy = models.BooleanField(default=False)
     
     class Meta:
         unique_together = ('character_variant', 'rarity', 'style', 'theme')
