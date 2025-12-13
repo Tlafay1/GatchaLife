@@ -6,8 +6,8 @@ import {
   useSeriesList,
   useRaritiesList
 } from '@/lib/api-client';
-import { ref, computed } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, computed, watch } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import { Search, FilterX, SlidersHorizontal, ChevronDown, ChevronUp, Maximize2, X, Lock } from 'lucide-vue-next';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -20,21 +20,93 @@ import {
 } from '@/components/ui/select';
 
 const router = useRouter();
-const filters = ref({
+const route = useRoute();
+
+const STORAGE_KEY = 'gatchalife_collection_config_v2';
+
+const defaultFilters = {
   rarity: 'all',
   theme: 'all',
   style: 'all',
   series: 'all',
-  series: 'all',
-  character: '', // Search by name
-  character: '', // Search by name
+  character: '',
   showArchived: false,
-  showAll: true, // Default to true as requested
-});
+  showAll: true,
+};
 
-const groupBy = ref('series'); // Default group by
-const isFiltersOpen = ref(false); // Minimized by default
+const getInitialState = () => {
+    // 1. Try URL (if meaningful params exist)
+    const q = route.query;
+    // Check if any filter keys are present
+    const keys = [...Object.keys(defaultFilters), 'groupBy'];
+    const hasUrlParams = keys.some(k => q[k] !== undefined);
+    
+    if (hasUrlParams) {
+        return {
+            filters: {
+                rarity: (q.rarity as string) || defaultFilters.rarity,
+                theme: (q.theme as string) || defaultFilters.theme,
+                style: (q.style as string) || defaultFilters.style,
+                series: (q.series as string) || defaultFilters.series,
+                character: (q.character as string) || defaultFilters.character,
+                showArchived: q.showArchived === 'true',
+                showAll: q.showAll !== 'false', // Default is true, so only false if 'false'
+            },
+            groupBy: (q.groupBy as string) || 'series',
+            isFiltersOpen: q.filtersOpen === 'true'
+        };
+    }
+    
+    // 2. Try Storage
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+        try {
+            const parsed = JSON.parse(saved);
+            return {
+                filters: { ...defaultFilters, ...parsed.filters },
+                groupBy: parsed.groupBy || 'series',
+                isFiltersOpen: parsed.isFiltersOpen || false
+            };
+        } catch(e) {
+            console.error("Failed to parse saved filters", e);
+        }
+    }
+    
+    // 3. Default
+    return {
+        filters: { ...defaultFilters },
+        groupBy: 'series',
+        isFiltersOpen: false
+    };
+};
+
+const initialState = getInitialState();
+
+const filters = ref(initialState.filters);
+const groupBy = ref(initialState.groupBy);
+const isFiltersOpen = ref(initialState.isFiltersOpen); // Minimized by default
 const selectedCard = ref<any>(null); // For full screen view
+
+// Sync state to Storage and URL
+watch([filters, groupBy, isFiltersOpen], () => {
+    const config = {
+        filters: filters.value,
+        groupBy: groupBy.value,
+        isFiltersOpen: isFiltersOpen.value
+    };
+    
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+    
+    // Convert generic filters object to string-based query
+    const query = {
+        ...filters.value,
+        groupBy: groupBy.value,
+        filtersOpen: isFiltersOpen.value ? 'true' : undefined
+    };
+    
+    // Replace current history entry
+    router.replace({ query: query as any });
+}, { deep: true });
 
 // Transform "all" to empty string for API
 const apiFilters = computed(() => {
@@ -68,15 +140,7 @@ const { data: series } = useSeriesList();
 const { data: rarities } = useRaritiesList();
 
 const resetFilters = () => {
-  filters.value = {
-    rarity: 'all',
-    theme: 'all',
-    style: 'all',
-    series: 'all',
-    series: 'all',
-    character: '',
-    showArchived: false,
-  };
+  filters.value = { ...defaultFilters };
   groupBy.value = 'series';
 };
 
