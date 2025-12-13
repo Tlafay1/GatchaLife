@@ -17,6 +17,36 @@ from gatchalife.style.models import Rarity, Style, Theme
 from gatchalife.style.serializers import RaritySerializer, StyleSerializer, ThemeSerializer
 
 
+def match_card_configuration(variant, rarity, style, theme):
+    """
+    Finds the specific card configuration that matches the given rarity, style, and theme
+    for a character variant.
+    """
+    configs = variant.card_configurations_data or []
+
+    for c in configs:
+        # Check Rarity
+        if c.get("rarity", "").upper() != rarity.name.upper():
+            continue
+
+        # Check Style
+        # If config has a style, it MUST match. If config has no style, it accepts any style?
+        # Usually config determines the style. So if config has style, we check equality.
+        c_style = c.get("style", {}).get("name", "")
+        if c_style and style and c_style.strip().lower() != style.name.strip().lower():
+            continue
+
+        # Check Theme
+        c_theme = c.get("theme", {}).get("name", "")
+        if c_theme and theme and c_theme.strip().lower() != theme.name.strip().lower():
+            continue
+
+        # Found match
+        return c
+
+    return None
+
+
 def generate_image(character_variant: CharacterVariant, rarity: Rarity, style: Style, theme: Theme, pose: str = None, card_configuration: dict = None) -> GeneratedImage:
     # Trigger N8N workflow to generate image
     n8n_url = f"{settings.N8N_BASE_URL}/{settings.N8N_WORKFLOW_WEBHOOK_PATH}/{settings.N8N_GENERATE_IMAGE_WORKFLOW_ID}"
@@ -42,7 +72,11 @@ def generate_image(character_variant: CharacterVariant, rarity: Rarity, style: S
 
     # Base64 encode Character Variant Reference Images (Existing logic)
     encoded_images_list = []
-    for image_ref in character_variant_instance.images.all():
+
+    # Force fetch images if lazy (though .all() does that)
+    ref_images = character_variant_instance.images.all()
+
+    for image_ref in ref_images:
          encoded_data = encode_image_field(image_ref.image)
          if encoded_data:
             mimetype, _ = mimetypes.guess_type(image_ref.image.name)
@@ -51,6 +85,12 @@ def generate_image(character_variant: CharacterVariant, rarity: Rarity, style: S
                 "mimetype": mimetype or "image/png",
                 "data": encoded_data,
             })
+
+    logger.info(
+        "Encoded reference images for generation",
+        variant=character_variant_instance.name,
+        count=len(encoded_images_list),
+    )
     
     # Base64 encode Specific Reference (Variant)
     specific_ref_b64 = encode_image_field(character_variant_instance.specific_reference_image)

@@ -76,37 +76,17 @@ class CollectionViewSet(viewsets.ReadOnlyModelViewSet):
             theme=card.theme.name,
         )
 
-        # Lookup Pose from Config
-        configs = card.character_variant.card_configurations_data or []
-        pose = None
-        matched_config = None
-
-        for c in configs:
-            # Check Rarity
-            if c.get("rarity", "").upper() != card.rarity.name.upper():
-                continue
-
-            # Check Style
-            c_style = c.get("style", {}).get("name", "")
-            if c_style and c_style.strip().lower() != card.style.name.strip().lower():
-                continue
-
-            # Check Theme
-            c_theme = c.get("theme", {}).get("name", "")
-            if c_theme and c_theme.strip().lower() != card.theme.name.strip().lower():
-                continue
-
-            # Found match
-            pose = c.get("pose")
-            matched_config = c
-            break
+        # Lookup configuration
+        matched_config = match_card_configuration(
+            card.character_variant, card.rarity, card.style, card.theme
+        )
+        pose = matched_config.get("pose") if matched_config else None
 
         if pose:
             logger.info("Found configuration for reroll", pose=pose)
         else:
             logger.info(
-                "No exact configuration matched for reroll, generating without specific pose",
-                variant_configs_count=len(configs),
+                "No exact configuration matched for reroll, generating without specific pose"
             )
 
         try:
