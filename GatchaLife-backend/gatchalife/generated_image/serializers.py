@@ -57,6 +57,7 @@ class GeneratedImageSerializer(serializers.ModelSerializer):
         pose = None
         style = None
         theme = None
+        config = None
 
         if matching_configs:
             # Pick a curated configuration
@@ -96,4 +97,6 @@ class GeneratedImageSerializer(serializers.ModelSerializer):
         if not theme:
             theme = Theme.objects.order_by("?").first()
 
-        return generate_image(variant, rarity, style, theme, pose=pose)
+        return generate_image(
+            variant, rarity, style, theme, pose=pose, card_configuration=config
+        )
