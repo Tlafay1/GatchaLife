@@ -123,12 +123,16 @@ const apiFilters = computed(() => {
   // We need to map camelCase showAll to snake_case show_all for Django backend.
   const params: any = { ...f };
   delete params.showAll;
+  delete params.showAll;
+  // keep showArchived as it's used by backend now for show_all logic, 
+  // though we mapped it to snake_case below, so we can delete the camelCase one.
   delete params.showArchived; 
   // We handle showArchived locally in frontend filtering (lines 76-78), 
   // BUT showAll is a backend param now.
   // Actually, wait. showArchived is frontend filter. showAll is backend param.
   
   if (f.showAll) params.show_all = 'true';
+  if (f.showArchived) params.show_archived = 'true';
   
   return params;
 });

@@ -113,16 +113,26 @@ class CollectionViewSet(viewsets.ReadOnlyModelViewSet):
 
     def list(self, request, *args, **kwargs):
         show_all = request.query_params.get("show_all") == "true"
-        if not show_all:
+        show_archived = request.query_params.get("show_archived") == "true"
+
+        if not show_all and not show_archived:
+            # Optimization: If not showing all, using standard list might suffice,
+            # BUT standard list filters owned cards.
+            # If user wants to see owned archived cards, standard list might hide them if standard filter_qs hides them?
+            # Standard filter_qs does NOT hide legacy cards by default (unless I changed it).
+            # Let's check filter_queryset. It just applies Rarity/Theme/etc.
+            # So default behavior shows owned legacy cards.
+            # But if show_all is False, we just return super().list().
             return super().list(request, *args, **kwargs)
 
         # --- Show All Logic ---
         player = get_default_player()
 
         # 1. Fetch base variants (applying character/series filters)
-        variants_qs = CharacterVariant.objects.filter(
-            legacy=False, character__legacy=False
-        ).select_related("character")
+        variants_qs = CharacterVariant.objects.select_related("character")
+
+        if not show_archived:
+            variants_qs = variants_qs.filter(legacy=False, character__legacy=False)
 
         series_param = request.query_params.get("series")
         if series_param:
@@ -164,7 +174,7 @@ class CollectionViewSet(viewsets.ReadOnlyModelViewSet):
         for variant in variants_qs:
             configs = variant.card_configurations_data or []
             for config in configs:
-                if config.get("legacy"):
+                if config.get("legacy") and not show_archived:
                     continue
 
                 r_name = config.get("rarity", "").upper()
@@ -216,7 +226,9 @@ class CollectionViewSet(viewsets.ReadOnlyModelViewSet):
                                 "image_url": None,  # Placeholder trigger
                                 "visual_override": variant.visual_override,
                                 "description": variant.description,
-                                "is_archived": False,
+                                "is_archived": variant.legacy
+                                or variant.character.legacy
+                                or config.get("legacy", False),
                             },
                         }
                     )
