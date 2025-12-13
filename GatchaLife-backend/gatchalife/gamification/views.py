@@ -199,6 +199,11 @@ class CollectionViewSet(viewsets.ReadOnlyModelViewSet):
                     continue
 
                 key = (variant.id, r_name, s_name, t_name)
+                is_archived = (
+                    variant.legacy
+                    or variant.character.legacy
+                    or config.get("legacy", False)
+                )
 
                 if key in owned_map:
                     # User owns it - serialize normally
@@ -206,7 +211,12 @@ class CollectionViewSet(viewsets.ReadOnlyModelViewSet):
                     combined_list.append(serializer.data)
                 else:
                     # User doesn't own it - create placeholder
-                    # We manually mock the UserCardSerializer structure
+                    # REQUEST 404: Don't show uncollected cards if they are legacy
+                    # (Assuming "si elles ne sont pas legacy" was a typo for "si elles sont legacy",
+                    # as hiding active uncollected cards contradicts the main feature)
+                    if is_archived:
+                        continue
+
                     combined_list.append(
                         {
                             "id": None,  # Virtual
@@ -226,9 +236,7 @@ class CollectionViewSet(viewsets.ReadOnlyModelViewSet):
                                 "image_url": None,  # Placeholder trigger
                                 "visual_override": variant.visual_override,
                                 "description": variant.description,
-                                "is_archived": variant.legacy
-                                or variant.character.legacy
-                                or config.get("legacy", False),
+                                "is_archived": is_archived,
                             },
                         }
                     )
