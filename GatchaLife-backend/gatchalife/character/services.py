@@ -147,6 +147,35 @@ def update_variants_from_ai(character, ai_data):
             "card_configurations_data": configs,
         }
 
+        # --- Smart Merge Logic ---
+        # 1. Identify new configs
+        new_configs = configs  # From AI
+        final_configs = list(new_configs)  # Start with new ones
+
+        # Helper to generate unique key for a config
+        def get_config_key(c):
+            r = c.get("rarity", "").upper()
+            s = c.get("style", {}).get("name", "")
+            t = c.get("theme", {}).get("name", "")
+            return (r, s, t)
+
+        new_keys = set(get_config_key(c) for c in new_configs)
+
+        # 2. Process old configs if variant exists
+        if variant:
+            old_configs = variant.card_configurations_data or []
+            for old_c in old_configs:
+                key = get_config_key(old_c)
+
+                # If this specific configuration is NOT in the new AI output
+                if key not in new_keys:
+                    # Mark as legacy and keep it so we don't break existing cards
+                    old_c["legacy"] = True
+                    final_configs.append(old_c)
+
+        defaults["card_configurations_data"] = final_configs
+        # -------------------------
+
         if variant:
             # Update existing
             for key, value in defaults.items():

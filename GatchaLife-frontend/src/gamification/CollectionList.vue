@@ -374,7 +374,9 @@ const closeFullScreen = () => {
           <div v-if="groupBy !== 'none'" class="flex items-center gap-4">
             <h2 class="text-xl font-bold">{{ groupName }}</h2>
             <div class="h-px flex-1 bg-border"></div>
-            <span class="text-sm text-muted-foreground">{{ items.length }} cards</span>
+            <span class="text-sm text-muted-foreground">
+              {{ items.filter((i: any) => i.count > 0).length }} / {{ items.length }} Collected
+            </span>
           </div>
 
           <!-- Cards Grid -->
