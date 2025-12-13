@@ -98,11 +98,10 @@ class CharacterViewSet(viewsets.ModelViewSet):
                 "name": character.name,
                 "series": character.series.name if character.series else "Unknown",
                 "user_prompt": request.data.get("prompt", ""),
-                
                 # Detailed Description Fields
                 "lore_tags": character.lore_tags,
                 "body_type": character.body_type_description,
-                "appearance": character.description, 
+                "appearance": character.description,
                 "visual_traits": character.visual_traits,
                 "hair_prompt": character.hair_prompt,
                 "eye_prompt": character.eye_prompt,
@@ -110,6 +109,11 @@ class CharacterViewSet(viewsets.ModelViewSet):
                 "affinity_environments": character.affinity_environments,
                 "clashing_environments": character.clashing_environments,
                 "negative_traits_suggestion": character.negative_traits_suggestion,
+                # Context for AI to avoid duplicates
+                "existing_variants": [
+                    {"name": v.name, "description": v.description}
+                    for v in character.variants.all()
+                ],
             }
             
             # Prepare Files (Binary)

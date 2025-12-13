@@ -135,16 +135,29 @@ def update_variants_from_ai(character, ai_data):
                 config["rarity"] = "COMMON"
 
         # Create/Update Variant
-        variant, created = CharacterVariant.objects.update_or_create(
-            character=character,
-            name=variant_name,
-            defaults={
-                "variant_type": v_data.get("type", "SKIN"),
-                "visual_override": v_data.get("visual_override", ""),
-                "description": v_data.get("description", ""),
-                "card_configurations_data": configs
-            }
-        )
+        # Create/Update Variant (Robust Case-Insensitive Match)
+        variant = CharacterVariant.objects.filter(
+            character=character, name__iexact=variant_name
+        ).first()
+
+        defaults = {
+            "variant_type": v_data.get("type", "SKIN"),
+            "visual_override": v_data.get("visual_override", ""),
+            "description": v_data.get("description", ""),
+            "card_configurations_data": configs,
+        }
+
+        if variant:
+            # Update existing
+            for key, value in defaults.items():
+                setattr(variant, key, value)
+            variant.name = variant_name  # Update casing to match AI output if desirable
+            variant.save()
+        else:
+            # Create new
+            variant = CharacterVariant.objects.create(
+                character=character, name=variant_name, **defaults
+            )
         
         # Process Configurations to ensure embedded Styles and Themes exist in DB
         for config in configs:
