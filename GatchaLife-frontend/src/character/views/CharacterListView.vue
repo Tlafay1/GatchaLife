@@ -34,7 +34,7 @@
         <h2 class="text-xl font-semibold mb-3">{{ group.series.name }}</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <Card v-for="char in group.characters" :key="char.id" 
-                :class="char.legacy ? 'opacity-70 grayscale bg-muted/20 border-dashed' : ''">
+                :class="char.legacy ? 'opacity-90 grayscale-[0.7] bg-muted/20 border-dashed' : ''">
             <CardHeader class="pb-2">
               <div class="flex justify-between items-start">
                   <CardTitle>{{ char.name }}</CardTitle>

@@ -319,7 +319,7 @@
 
         <VariantItem v-for="(variant, index) in form.variants" :key="variant.id || `new-${index}`"
           v-show="showArchivedVariants || !variant.legacy"
-          :class="variant.legacy ? 'opacity-70 grayscale bg-muted/20 border-dashed' : ''"
+          :class="variant.legacy ? 'opacity-90 grayscale-[0.7] bg-muted/20 border-dashed' : ''"
           :model-value="variant" @update:model-value="(newVal) => form.variants[index] = newVal"
           @remove="removeVariant(index)" :onScheduleImageForDeletion="scheduleImageForDeletion" />
       </div>

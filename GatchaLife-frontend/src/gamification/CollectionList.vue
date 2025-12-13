@@ -279,7 +279,7 @@ const closeFullScreen = () => {
           <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
             <div v-for="item in items" :key="item.id" @click="goToDetails(item.id)"
               class="group relative aspect-[2/3] bg-card rounded-xl border-2 overflow-hidden transition-all hover:scale-105 hover:z-10 cursor-pointer block"
-              :class="[rarityColor(item.card.rarity_name), item.card.is_archived ? 'grayscale opacity-80' : '']">
+              :class="[rarityColor(item.card.rarity_name), item.card.is_archived ? 'grayscale-[0.7] opacity-90' : '']">
               <!-- Image -->
               <div class="absolute inset-0 bg-muted">
                 <img v-if="item.card.image_url" :src="item.card.image_url"
