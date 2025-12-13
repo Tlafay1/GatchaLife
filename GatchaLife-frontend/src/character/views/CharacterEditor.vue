@@ -268,7 +268,13 @@
       <!-- Visual Variants -->
       <div class="space-y-4">
         <div class="flex items-center justify-between">
-          <h2 class="text-xl font-semibold tracking-tight">Visual Variants</h2>
+          <div class="flex items-center gap-4">
+            <h2 class="text-xl font-semibold tracking-tight">Visual Variants</h2>
+            <div class="flex items-center space-x-2 border px-2 py-1 rounded bg-background/50">
+              <input type="checkbox" id="show-archived-variants" v-model="showArchivedVariants" class="h-3 w-3 rounded border-input" />
+              <Label for="show-archived-variants" class="text-xs cursor-pointer">Show Archived</Label>
+             </div>
+          </div>
           <div class="flex gap-2">
             <Dialog v-model:open="isVariantDialogOpen">
               <DialogTrigger as-child>
@@ -312,6 +318,8 @@
         </div>
 
         <VariantItem v-for="(variant, index) in form.variants" :key="variant.id || `new-${index}`"
+          v-show="showArchivedVariants || !variant.legacy"
+          :class="variant.legacy ? 'opacity-70 grayscale bg-muted/20 border-dashed' : ''"
           :model-value="variant" @update:model-value="(newVal) => form.variants[index] = newVal"
           @remove="removeVariant(index)" :onScheduleImageForDeletion="scheduleImageForDeletion" />
       </div>
@@ -430,6 +438,8 @@ watch(characterData, (newChar) => {
     }))
   }
 }, { immediate: true })
+
+const showArchivedVariants = ref(false)
 
 // --- SERIES LOGIC ---
 const { data: seriesList, isLoading: isLoadingSeries } = useSeriesList()
