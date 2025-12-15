@@ -108,25 +108,38 @@ class TickTickViewSet(viewsets.ViewSet):
             }
         )
 
-    @action(detail=False, methods=["get"])
-    def progression(self, request):
+    @action(detail=False, methods=["post"])
+    def manual_task(self, request):
         """
-        Returns daily aggregated XP and Coin stats for the last 30 days.
+        Manually complete a task without webhook.
+        Payload: { "title": "...", "difficulty": "medium", "tags": [...] }
         """
-        from django.db.models import Sum
-        from django.db.models.functions import TruncDate
+        from .services import process_completed_task
+        from django.contrib.auth.models import User
+        import uuid
 
-        thirty_days_ago = timezone.now() - timedelta(days=30)
+        title = request.data.get("title", "Manual Task")
+        # If difficulty provided directly, use it to fake a tag, or rely on tags
+        difficulty = request.data.get("difficulty", "easy")
+        tags = request.data.get("tags", [])
+        
+        # Ensure difficulty tag is present if passed explicitly
+        if difficulty and difficulty.lower() not in [t.lower() for t in tags]:
+            tags.append(difficulty.lower())
 
-        daily_stats = (
-            ProcessedTask.objects.filter(processed_at__gte=thirty_days_ago)
-            .annotate(date=TruncDate("processed_at"))
-            .values("date")
-            .annotate(total_xp=Sum("xp_gain"), total_coins=Sum("coin_gain"))
-            .order_by("date")
-        )
+        # Generate a synthetic ID
+        task_id = f"manual_{uuid.uuid4().hex[:8]}"
+        
+        user = User.objects.first() # Default user logic from before
+        if not user:
+            user = User.objects.create(username="Player1")
 
-        return Response(daily_stats)
+        result = process_completed_task(task_id, title, tags, user)
+        
+        if result.get("status") == "already_processed":
+             return Response(result, status=http_status.HTTP_200_OK)
+             
+        return Response(result, status=http_status.HTTP_201_CREATED)
 
 
 @csrf_exempt
@@ -135,21 +148,10 @@ class TickTickViewSet(viewsets.ViewSet):
 def zapier_webhook(request):
     """
     Webhook endpoint for Zapier to call when a task is completed.
-
-    Expected payload from Zapier:
-    {
-        "id": "string",
-        "task_name": "string",
-        "list": "string" (optional),
-        "tag": "List[string]" (optional),
-        "priority": "string" (optional),
-        "timestamp": number (optional),
-        "link_to_task": "string" (optional),
-        "repeat_flag": "string" (optional)
-    }
     """
     from gatchalife.gamification.models import Player
     from django.contrib.auth.models import User
+    from .services import process_completed_task
 
     # Get task data from Zapier (using their field names)
     # FIXME: Couldn't get zapier to send JSON body properly, so using form-encoded 'data' field
@@ -165,165 +167,22 @@ def zapier_webhook(request):
             {"error": "id is required"}, status=http_status.HTTP_400_BAD_REQUEST
         )
 
-    # Check if we've already processed this task
-    if ProcessedTask.objects.filter(task_id=task_id).exists():
-        logger.info("task_already_processed", task_id=task_id)
-        return Response(
-            {
-                "status": "already_processed",
-                "message": f"Task {task_id} has already been rewarded",
-            },
-            status=http_status.HTTP_200_OK,
-        )
-
     # Get the default player
     user = User.objects.first()
     if not user:
         user = User.objects.create(username="Player1")
-    player, _ = Player.objects.get_or_create(user=user)
 
-    # Parse tags to determine difficulty
-    # Zapier sends 'tag' as a space-separated string like "#test #easy"
-    # We also support 'tags' and list formats for robustness
+    # Parse tags
     raw_tags_input = data.get("tag", data.get("tags", []))
-
     raw_tags = []
     if isinstance(raw_tags_input, str):
-        # Handle space separated tags (common in TickTick)
-        # We also handle comma separated just in case
         cleaned_input = raw_tags_input.replace(",", " ")
         parts = cleaned_input.split()
         raw_tags = [p.strip() for p in parts if p.strip()]
     elif isinstance(raw_tags_input, list):
         raw_tags = raw_tags_input
 
-    difficulty = "easy"
-    difficulty_multiplier = 1.0
+    result = process_completed_task(task_id, title, raw_tags, user)
 
-    # Check for difficulty tags
-    for tag in raw_tags:
-        lower_tag = tag.lower()
-        # Check for simple tags like #extreme or just extreme
-        if "extreme" in lower_tag:
-            difficulty = "extreme"
-            difficulty_multiplier = 3.0
-            break
-        elif "hard" in lower_tag:
-            difficulty = "hard"
-            difficulty_multiplier = 2.0
-            break
-        elif "medium" in lower_tag:
-            difficulty = "medium"
-            difficulty_multiplier = 1.5
-            break
-        # Default is easy (1.0)
-
-    # 1. Gestion du Streak et du Bonus Quotidien
-    now = timezone.now()
-    today = now.date()
-    daily_bonus = 0
-
-    if player.last_activity_date:
-        last_date = player.last_activity_date.date()
-        if last_date < today:
-            # C'est la première tâche de la journée !
-            daily_bonus = 50  # Gros boost : la moitié d'une carte offerte
-
-            if last_date == today - timedelta(days=1):
-                player.current_streak += 1
-            else:
-                player.current_streak = 1  # Reset si jour raté
-    else:
-        # Tout premier jour
-        daily_bonus = 100  # Premier shoot gratuit (Onboarding)
-        player.current_streak = 1
-
-    player.last_activity_date = now
-
-    # 2. Calcul de la récompense variable (Skinner Box)
-    # Base entre 15 et 25
-    base_currency = random.randint(15, 25)
-
-    # 3. Multiplicateur de Streak (Max x1.5)
-    streak_multiplier = 1 + min(player.current_streak * 0.05, 0.5)
-
-    # 4. Critique / Jackpot (10% de chance de x2 - reduced from x3 to balance difficulty)
-    is_crit = random.random() < 0.10
-    crit_multiplier = 2.0 if is_crit else 1.0
-
-    # Calcul Final
-    # Formula: (Base * Difficulty * Streak * Crit) + Daily Bonus
-    currency_gain = int(
-        (base_currency * difficulty_multiplier * streak_multiplier * crit_multiplier)
-        + daily_bonus
-    )
-    xp_gain = int(currency_gain * 0.5)  # L'XP suit la monnaie
-
-    logger.info(
-        "reward_calculated",
-        task_id=task_id,
-        currency_gain=currency_gain,
-        xp_gain=xp_gain,
-        breakdown={
-            "base": base_currency,
-            "difficulty": difficulty,
-            "streak_mult": streak_multiplier,
-            "crit": is_crit,
-            "daily_bonus": daily_bonus,
-        },
-    )
-
-    player.xp += xp_gain
-    player.gatcha_coins += currency_gain
-
-    # Level up logic
-    xp_needed = player.level * 100
-    levels_gained = 0
-    while player.xp >= xp_needed:
-        player.level += 1
-        levels_gained += 1
-        player.xp -= xp_needed
-        player.gatcha_coins += 50  # Level up bonus
-        xp_needed = player.level * 100
-        logger.info("level_up", new_level=player.level, player=player.user.username)
-
-    player.save()
-
-    # Create ProcessedTask record with full details
-    ProcessedTask.objects.create(
-        task_id=task_id,
-        task_title=title,
-        xp_gain=xp_gain,
-        coin_gain=currency_gain,
-        difficulty=difficulty,
-        is_crit=is_crit,
-        crit_multiplier=crit_multiplier,
-        base_reward=base_currency,
-        streak_multiplier=streak_multiplier,
-        daily_bonus=daily_bonus,
-        tags=json.dumps(raw_tags),
-    )
-
-    return Response(
-        {
-            "status": "success",
-            "task_id": task_id,
-            "task_name": title,
-            "reward_details": {
-                "base": base_currency,
-                "difficulty": difficulty,
-                "difficulty_multiplier": difficulty_multiplier,
-                "daily_bonus": daily_bonus,
-                "streak_bonus": streak_multiplier,
-                "is_crit": is_crit,
-                "crit_multiplier": crit_multiplier,
-                "total_coins": currency_gain,
-                "xp_gain": xp_gain,
-            },
-            "levels_gained": levels_gained,
-            "new_level": player.level,
-            "current_xp": player.xp,
-            "current_currency": player.gatcha_coins,
-        },
-        status=http_status.HTTP_201_CREATED,
-    )
+    status_code = http_status.HTTP_200_OK if result.get("status") == "already_processed" else http_status.HTTP_201_CREATED
+    return Response(result, status=status_code)

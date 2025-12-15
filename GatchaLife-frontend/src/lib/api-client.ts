@@ -476,3 +476,23 @@ export const useProgressionStats = () => useQuery({
     return response.json();
   },
 });
+
+export const useManualTask = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { title: string, difficulty: string }) => {
+      const response = await fetch(`${OpenAPI.BASE}/ticktick/manual_task/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error('Failed to complete manual task');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['player'] });
+      queryClient.invalidateQueries({ queryKey: ['ticktick-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['ticktick-history'] });
+    },
+  });
+};
