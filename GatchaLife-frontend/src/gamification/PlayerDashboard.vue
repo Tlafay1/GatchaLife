@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { usePlayerStats, useGatchaRoll, useTickTickStats, useCollection } from '@/lib/api-client';
+import { usePlayerStats, useGatchaRoll, useTickTickStats, useCollection, useManualTask } from '@/lib/api-client';
 import { ref, computed, watch } from 'vue';
 import SummonBanner from '@/components/SummonBanner.vue';
 import StatCard from '@/components/StatCard.vue';
@@ -12,14 +12,19 @@ import {
   ClipboardList,
   CheckCircle2,
   Library,
-  Flame
+  Flame,
+  X
 } from 'lucide-vue-next';
 
 const { data: player, refetch: refetchPlayer } = usePlayerStats();
 const { data: stats, isLoading: statsLoading } = useTickTickStats();
 const { data: collection } = useCollection();
+const { mutate: addManualTask, isPending: isAddingTask } = useManualTask();
 
 const showLevelUp = ref(false);
+const showManualTaskModal = ref(false);
+const manualTaskTitle = ref('');
+const manualTaskDifficulty = ref('easy');
 
 // Watch for level up
 watch(() => player.value?.level, (newLevel, oldLevel) => {
@@ -27,6 +32,22 @@ watch(() => player.value?.level, (newLevel, oldLevel) => {
     showLevelUp.value = true;
   }
 });
+
+const handleManualTaskSubmit = () => {
+  if (!manualTaskTitle.value) return;
+  
+  addManualTask({
+    title: manualTaskTitle.value,
+    difficulty: manualTaskDifficulty.value
+  }, {
+    onSuccess: () => {
+      showManualTaskModal.value = false;
+      manualTaskTitle.value = '';
+      manualTaskDifficulty.value = 'easy';
+      // Ideally show a success toast here
+    }
+  });
+};
 
 const xpPercentage = computed(() => {
   if (!player.value) return 0;
@@ -146,7 +167,13 @@ const getDifficultyColor = (difficulty: string) => {
 
           <!-- Hero Action -->
           <div class="flex flex-col gap-4 min-w-[200px]">
-            <!-- Sync button removed as per user request (Zapier handles it now) -->
+             <!-- Manual Task Button -->
+            <button @click="showManualTaskModal = true"
+              class="w-full py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl flex items-center justify-center gap-2 transition-all font-bold text-sm backdrop-blur-sm group">
+              <PlusCircle class="w-4 h-4 text-blue-400 group-hover:scale-110 transition-transform" />
+              Add Manual Task
+            </button>
+
             <div class="p-4 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm">
               <div class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Status</div>
               <div class="flex items-center gap-2 text-green-400 font-bold">
@@ -270,10 +297,64 @@ const getDifficultyColor = (difficulty: string) => {
         </div>
       </div>
     </main>
+    
+    <!-- Manual Task Modal -->
+    <Teleport to="body">
+      <div v-if="showManualTaskModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
+        <div class="bg-card border border-border rounded-xl shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in-95 duration-200">
+          <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xl font-bold">Add Manual Task</h3>
+            <button @click="showManualTaskModal = false" class="text-muted-foreground hover:text-foreground">
+              <X class="w-5 h-5" />
+            </button>
+          </div>
+          
+          <div class="space-y-4">
+            <div>
+              <label class="text-sm font-bold mb-1 block">Task Title</label>
+              <input v-model="manualTaskTitle" type="text" placeholder="What did you accomplish?"
+                class="w-full px-3 py-2 bg-background border border-input rounded-md focus:ring-2 focus:ring-primary focus:outline-none"
+                @keyup.enter="handleManualTaskSubmit"
+                 />
+            </div>
+            
+            <div>
+              <label class="text-sm font-bold mb-1 block">Difficulty</label>
+              <div class="grid grid-cols-4 gap-2">
+                 <button v-for="dif in ['easy', 'medium', 'hard', 'extreme']" :key="dif"
+                    @click="manualTaskDifficulty = dif"
+                    class="px-2 py-2 rounded-md border text-xs font-bold uppercase transition-colors"
+                    :class="manualTaskDifficulty === dif ? getDifficultyColor(dif) + ' ring-2 ring-primary ring-offset-2 ring-offset-background' : 'border-border bg-secondary/50 text-muted-foreground hover:bg-secondary'">
+                    {{ dif }}
+                 </button>
+              </div>
+            </div>
+            
+            <button @click="handleManualTaskSubmit" :disabled="!manualTaskTitle || isAddingTask"
+              class="w-full py-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-bold flex items-center justify-center gap-2 mt-2 disabled:opacity-50">
+              <span v-if="isAddingTask" class="animate-spin text-xl">⟳</span>
+              <span v-else>Complete Task</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
 
     <LevelUpModal :show="showLevelUp" :level="player?.level || 1" @close="showLevelUp = false" />
   </div>
 </template>
+
+<style>
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
+}
+</style>
 
 <style>
 @keyframes shimmer {
