@@ -44,10 +44,10 @@ def update_character_from_ai(character, ai_data):
     character.save()
     return character
 
-def trigger_character_profiling(character, wiki_text):
+def trigger_character_profiling(character, wiki_text, callback_url=None):
     """
     Triggers the n8n workflow to profile a character based on wiki text.
-    Returns the raw response JSON from n8n or None if failed.
+    Creates an AsyncJob and returns the job ID.
     """
     n8n_path = getattr(settings, "N8N_CHARACTER_WEBHOOK_URL", "character-profile")
     base_url = getattr(settings, "N8N_BASE_URL", None)
@@ -58,14 +58,25 @@ def trigger_character_profiling(character, wiki_text):
         return None
 
     webhook_url = f"{base_url}/{webhook_path}/{n8n_path}"
-    
+
+    # Create Async Job
+    from gatchalife.workflow_engine.models import AsyncJob
+
+    job = AsyncJob.objects.create(
+        job_type="character_profiling",
+        content_object=character,
+        payload={"wiki_source_text": wiki_text},
+    )
+
     # Prepare payload expected by n8n
+    # We inject the job_id so n8n can pass it back
     payload = {
+        "job_id": str(job.id),
+        "callback_url": callback_url,
         "character_name": character.name,
         "series": character.series.name if character.series else "Unknown",
-        "wiki_source_text": wiki_text, # Standardized key
-        # Legacy key support if n8n expects 'Content'
-        "Content": wiki_text
+        "wiki_source_text": wiki_text,
+        "Content": wiki_text,
     }
 
     files = {}
@@ -81,22 +92,26 @@ def trigger_character_profiling(character, wiki_text):
             logger.error(f"Could not prepare image file for automation: {file_err}")
 
     try:
-        if files:
-            response = requests.post(webhook_url, data=payload, files=files, timeout=600)
-        else:
-            response = requests.post(webhook_url, json=payload, timeout=600)
+        # We perform the request but we don't wait for the *result* of the workflow
+        # N8N should be configured to return immediately or we set a short timeout
+        # just to ensure the webhook was received.
+        # Ideally, N8N webhook node responds 200 OK immediately and continues processing.
 
-        if response.status_code == 200:
-            ai_data_list = response.json()
-            # Normalize list vs dict response
-            ai_data = ai_data_list[0] if isinstance(ai_data_list, list) and ai_data_list else ai_data_list
-            return ai_data
+        if files:
+            requests.post(webhook_url, data=payload, files=files, timeout=5)
         else:
-            logger.error(f"N8N Error {response.status_code}: {response.text}")
-            return None
+            requests.post(webhook_url, json=payload, timeout=5)
+
+        job.status = AsyncJob.Status.PROCESSING
+        job.save()
+
+        return job.id
 
     except Exception as e:
         logger.error(f"Failed to trigger automation for character {character.id}: {e}")
+        job.status = AsyncJob.Status.FAILED
+        job.error_message = str(e)
+        job.save()
         return None
 
 def update_variants_from_ai(character, ai_data):

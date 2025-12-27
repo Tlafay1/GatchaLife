@@ -5,9 +5,8 @@ from rest_framework import viewsets, filters, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
-import base64
-import mimetypes
 from django_filters.rest_framework import DjangoFilterBackend
+from django.urls import reverse
 
 from .models import Series, Character, CharacterVariant, VariantReferenceImage
 from .serializers import (
@@ -41,16 +40,17 @@ class CharacterViewSet(viewsets.ModelViewSet):
         wiki_text = self.request.data.get("wiki_source_text")
 
         if wiki_text:
-            from .services import trigger_character_profiling, update_character_from_ai
-            
-            ai_data = trigger_character_profiling(character, wiki_text)
-            if ai_data:
-               update_character_from_ai(character, ai_data)
+            from .services import trigger_character_profiling
+
+            # Trigger async job (fire and forget)
+            callback_url = self.request.build_absolute_uri(reverse("n8n-callback"))
+            trigger_character_profiling(character, wiki_text, callback_url=callback_url)
 
     @action(detail=True, methods=['post'], url_path='regenerate_from_wiki')
     def regenerate_from_wiki(self, request, pk=None):
         """
         Re-runs the profiling logic on an existing character using the provided character data (wiki text).
+        Returns the Job ID.
         """
         character = self.get_object()
         wiki_text = request.data.get("wiki_source_text", "")
@@ -61,18 +61,21 @@ class CharacterViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        from .services import trigger_character_profiling, update_character_from_ai
-        
-        ai_data = trigger_character_profiling(character, wiki_text)
-        
-        if ai_data:
-            update_character_from_ai(character, ai_data)
-            serializer = self.get_serializer(character)
-            return Response(serializer.data)
+        from .services import trigger_character_profiling
+
+        callback_url = request.build_absolute_uri(reverse("n8n-callback"))
+        job_id = trigger_character_profiling(
+            character, wiki_text, callback_url=callback_url
+        )
+
+        if job_id:
+            return Response(
+                {"job_id": job_id, "status": "PENDING"}, status=status.HTTP_202_ACCEPTED
+            )
         else:
             return Response(
-                {"error": "Failed to regenerate character data from AI."}, 
-                status=status.HTTP_502_BAD_GATEWAY
+                {"error": "Failed to trigger profiling job."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
     @action(detail=True, methods=['post'], url_path='create-variants')
@@ -90,10 +93,22 @@ class CharacterViewSet(viewsets.ModelViewSet):
             )
             
         webhook_url = f"{base_url}/{webhook_path}/{n8n_path}"
-        
+
+        # Create Async Job
+        from gatchalife.workflow_engine.models import AsyncJob
+
+        job = AsyncJob.objects.create(
+            job_type="create_variants",
+            content_object=character,
+            payload={"prompt": request.data.get("prompt", "")},
+        )
+
         # Prepare Payload
         try:
+            callback_url = request.build_absolute_uri(reverse("n8n-callback"))
             payload = {
+                "job_id": str(job.id),
+                "callback_url": callback_url,
                 "character_id": character.id,
                 "name": character.name,
                 "series": character.series.name if character.series else "Unknown",
@@ -119,53 +134,39 @@ class CharacterViewSet(viewsets.ModelViewSet):
             # Prepare Files (Binary)
             files = {}
             if character.identity_face_image:
-                 try:
+                try:
                     character.identity_face_image.open("rb")
                     files["identity_face_image"] = (
                         character.identity_face_image.name,
                         character.identity_face_image,
-                        "application/octet-stream", # Or guess mime type
+                        "application/octet-stream",
                     )
-                 except Exception as e:
-                     logger.error(f"Failed to open face image for binary upload: {e}")
+                except Exception as e:
+                    logger.error(f"Failed to open face image for binary upload: {e}")
 
-            # Send to n8n
-            # We use a longer timeout as generating ideas might take a moment.
-            # Using data=payload + files=files automagically sends multipart/form-data
+            # Send to n8n (Async trigger)
             if files:
-                response = requests.post(webhook_url, data=payload, files=files, timeout=600)
+                requests.post(webhook_url, data=payload, files=files, timeout=5)
             else:
-                response = requests.post(webhook_url, json=payload, timeout=600)
-            
-            if response.status_code == 200:
-                try:
-                    # Check if content is empty
-                    if not response.content:
-                         raise ValueError("Received empty response from N8N")
-                         
-                    data = response.json()
-                except ValueError as json_err:
-                     logger.error(f"Invalid JSON from N8N: {response.text}")
-                     return Response(
-                        {"error": f"N8N returned invalid JSON: {str(json_err)}"}, 
-                        status=status.HTTP_502_BAD_GATEWAY
-                    )
+                requests.post(webhook_url, json=payload, timeout=5)
 
-                from .services import update_variants_from_ai
-                created_variants = update_variants_from_ai(character, data)
-                
-                return Response({
-                    "message": f"Successfully created {len(created_variants)} variants.",
-                    "variants": [v.name for v in created_variants]
-                })
-            else:
-                 return Response(
-                    {"error": f"N8N Error: {response.text}"}, 
-                    status=status.HTTP_502_BAD_GATEWAY
-                )
+            job.status = AsyncJob.Status.PROCESSING
+            job.save()
+
+            return Response(
+                {
+                    "message": "Variant generation started.",
+                    "job_id": job.id,
+                    "status": "PENDING",
+                },
+                status=status.HTTP_202_ACCEPTED,
+            )
 
         except Exception as e:
-            logger.exception("Error in create_variants") # Log full traceback
+            logger.exception("Error in create_variants trigger")
+            job.status = AsyncJob.Status.FAILED
+            job.error_message = str(e)
+            job.save()
             return Response(
                 {"error": str(e)}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR

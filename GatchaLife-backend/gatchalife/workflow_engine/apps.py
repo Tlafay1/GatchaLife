@@ -1,0 +1,5 @@
+from django.apps import AppConfig
+
+class WorkflowEngineConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'gatchalife.workflow_engine'

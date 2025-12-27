@@ -1,5 +1,4 @@
 import requests
-from io import BytesIO
 import base64
 import mimetypes
 from django.conf import settings
@@ -47,7 +46,15 @@ def match_card_configuration(variant, rarity, style, theme):
     return None
 
 
-def generate_image(character_variant: CharacterVariant, rarity: Rarity, style: Style, theme: Theme, pose: str = None, card_configuration: dict = None) -> GeneratedImage:
+def generate_image(
+    character_variant: CharacterVariant,
+    rarity: Rarity,
+    style: Style,
+    theme: Theme,
+    pose: str = None,
+    card_configuration: dict = None,
+    callback_url: str = None,
+) -> GeneratedImage:
     # Trigger N8N workflow to generate image
     n8n_url = f"{settings.N8N_BASE_URL}/{settings.N8N_WORKFLOW_WEBHOOK_PATH}/{settings.N8N_GENERATE_IMAGE_WORKFLOW_ID}"
 
@@ -109,16 +116,33 @@ def generate_image(character_variant: CharacterVariant, rarity: Rarity, style: S
     if not final_identity_image_b64 and character_instance.identity_face_image:
          final_identity_image_b64 = encode_image_field(character_instance.identity_face_image)
 
+    # Create GeneratedImage instance first
+    image_instance = GeneratedImage.objects.create(
+        character_variant=character_variant_instance,
+        rarity=rarity,
+        style=style,
+        theme=theme,
+    )
+
+    # Create Async Job
+    from gatchalife.workflow_engine.models import AsyncJob
+
+    job = AsyncJob.objects.create(
+        job_type="generate_image", content_object=image_instance, payload={"pose": pose}
+    )
+
     payload = {
+        "job_id": str(job.id),
+        "callback_url": callback_url,
         "character_variant": {
-            **character_variant_data, 
+            **character_variant_data,
             "images": encoded_images_list,
-            "specific_reference_image_b64": specific_ref_b64 
+            "specific_reference_image_b64": specific_ref_b64,
         },
         "character": {
             **character_data,
             # We explicitly override/set this field for the N8N workflow to easily pick it up
-            "identity_face_image_b64": final_identity_image_b64
+            "identity_face_image_b64": final_identity_image_b64,
         },
         "rarity": RaritySerializer(rarity).data,
         "style": StyleSerializer(style).data,
@@ -126,25 +150,18 @@ def generate_image(character_variant: CharacterVariant, rarity: Rarity, style: S
             **ThemeSerializer(theme).data,
         },
         "pose": pose,
-        "card_configuration": card_configuration, # Pass full or partial config if needed
-        "identity_face_image": final_identity_image_b64
+        "card_configuration": card_configuration,
+        "identity_face_image": final_identity_image_b64,
     }
 
-    response = requests.post(n8n_url, json=payload, timeout=600)
-
-    response.raise_for_status()
-
-    # Retrieve the binary image data from the response
-    generated_image = response.content
-
-    # Save the generated image to the model instance
-    image_instance = GeneratedImage.objects.create(
-        character_variant=character_variant_instance,
-        rarity=rarity,
-        style=style,
-        theme=theme,
-    )
-    image_filename = f"generated_image_{image_instance.id}.png"
-    image_instance.image.save(image_filename, BytesIO(generated_image), save=True)
+    try:
+        requests.post(n8n_url, json=payload, timeout=5)
+        job.status = AsyncJob.Status.PROCESSING
+        job.save()
+    except Exception as e:
+        logger.error(f"Failed to trigger image generation: {e}")
+        job.status = AsyncJob.Status.FAILED
+        job.error_message = str(e)
+        job.save()
 
     return image_instance

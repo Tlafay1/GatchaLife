@@ -40,10 +40,13 @@ router.register(r'styles', StyleViewSet)               # /api/styles/
 router.register(r'rarities', RarityViewSet)           # /api/rarities/
 router.register(r'themes', ThemeViewSet)               # /api/themes/
 
+from gatchalife.workflow_engine.views import N8NCallbackView
+
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("gamification/", include("gatchalife.gamification.urls")),
     path("ticktick/", include("gatchalife.ticktick.urls")),
+    path("webhooks/n8n/callback/", N8NCallbackView.as_view(), name="n8n-callback"),
     path("", include(router.urls)),
     path(
         "apidocs.<format>/", schema_view.without_ui(cache_timeout=0), name="schema-json"
@@ -57,3 +60,4 @@ urlpatterns = [
 ]
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+

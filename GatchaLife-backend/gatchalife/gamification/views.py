@@ -8,6 +8,7 @@ from gatchalife.character.models import CharacterVariant
 from gatchalife.style.models import Rarity, Style, Theme
 import random
 import structlog
+from django.urls import reverse
 from gatchalife.generated_image.services import generate_image, match_card_configuration
 from gatchalife.generated_image.models import GeneratedImage
 
@@ -90,6 +91,7 @@ class CollectionViewSet(viewsets.ReadOnlyModelViewSet):
             )
 
         try:
+            callback_url = request.build_absolute_uri(reverse("n8n-callback"))
             generate_image(
                 card.character_variant,
                 card.rarity,
@@ -97,6 +99,7 @@ class CollectionViewSet(viewsets.ReadOnlyModelViewSet):
                 card.theme,
                 pose=pose,
                 card_configuration=matched_config,
+                callback_url=callback_url,
             )
             # Re-fetch serializer to get new image URL
             # We need to invalidate the prefetch cache if any, or just re-serialize
@@ -512,7 +515,9 @@ class GatchaViewSet(viewsets.ViewSet):
         # --- STEP 3: Parallel Generation ---
         if missing_combinations:
             from concurrent.futures import ThreadPoolExecutor, as_completed
-            
+
+            callback_url = request.build_absolute_uri(reverse("n8n-callback"))
+
             with ThreadPoolExecutor(max_workers=5) as executor:
                 futures = {
                     executor.submit(
@@ -523,6 +528,7 @@ class GatchaViewSet(viewsets.ViewSet):
                         t,
                         pose=config.get("pose"),
                         card_configuration=config,
+                        callback_url=callback_url,
                     ): (variant, r, s, t)
                     for (variant, r, s, t, config) in missing_combinations
                 }
