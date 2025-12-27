@@ -10,6 +10,7 @@ const { mutate: rollGatcha, isPending: isRolling } = useGatchaRoll();
 const showGatcha = ref(false);
 const dropData = ref<Array<{
   card: {
+    id: number;
     rarity_name: string;
     image_url?: string;
     character_variant_name: string;
@@ -18,6 +19,68 @@ const dropData = ref<Array<{
   };
   is_new: boolean;
 }> | null>(null);
+
+import { onUnmounted, watch } from 'vue';
+import { OpenAPI } from '@/api';
+
+let pollInterval: any = null;
+
+const startPolling = () => {
+  if (pollInterval) return;
+  pollInterval = setInterval(async () => {
+    if (!dropData.value) return;
+
+    let allReady = true;
+    const updatedDrops = [...dropData.value];
+    let hasUpdates = false;
+
+    for (let i = 0; i < updatedDrops.length; i++) {
+      const item = updatedDrops[i];
+      if (!item.card.image_url) {
+        allReady = false;
+        try {
+          const response = await fetch(`${OpenAPI.BASE}/gamification/collection/${item.card.id}/`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.card && data.card.image_url) {
+              updatedDrops[i] = { ...item, card: { ...item.card, image_url: data.card.image_url } };
+              hasUpdates = true;
+            }
+          }
+        } catch (e) {
+          console.error("Failed to poll card", item.card.id);
+        }
+      }
+    }
+
+    if (hasUpdates) {
+      dropData.value = updatedDrops;
+    }
+
+    if (allReady) {
+      stopPolling();
+    }
+  }, 2000);
+};
+
+const stopPolling = () => {
+  if (pollInterval) {
+    clearInterval(pollInterval);
+    pollInterval = null;
+  }
+};
+
+watch(showGatcha, (val) => {
+  if (val) {
+    startPolling();
+  } else {
+    stopPolling();
+  }
+});
+
+onUnmounted(() => {
+  stopPolling();
+});
 
 const handleRoll = () => {
   rollGatcha(undefined, {

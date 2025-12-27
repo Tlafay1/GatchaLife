@@ -526,7 +526,10 @@ const openVariantDialog = () => {
 
 const submitVariantGeneration = async () => {
   try {
-    const result = await generateVariants({ 
+    const currentCount = form.variants.length
+
+    // Trigger creation (returns 202 Accepted and Job ID)
+    await generateVariants({ 
       characterId: parseInt(props.id!), 
       prompt: variantPrompt.value 
     })
@@ -534,9 +537,40 @@ const submitVariantGeneration = async () => {
     isVariantDialogOpen.value = false
     variantPrompt.value = ''
 
-    if (result.variants && result.variants.length > 0) {
-      alert(`Successfully generated ${result.variants.length} variants: ${result.variants.join(', ')}`)
-    }
+    // Poll for results
+    let attempts = 0
+    const maxAttempts = 30 // 60 seconds
+
+    const interval = setInterval(async () => {
+      attempts++
+      // Invalidate to fetch fresh data
+      await queryClient.invalidateQueries({ queryKey: ['character', parseInt(props.id!)] })
+
+      // We rely on the watcher on 'characterData' to update 'form.variants'
+      // But the watcher runs asynchronously.
+      // Better to check the data directly from cache or fresh fetch if possible.
+      // Actually, invalidateQueries triggers a refetch which updates characterData which triggers the watcher.
+      // So we can check form.variants.length after a brief delay or in the next tick? 
+      // Or simpler: we check the cached data.
+
+      // Let's use fetchQuery to get the data immediately without waiting for watcher
+      const newData = await queryClient.fetchQuery({
+        queryKey: ['character', parseInt(props.id!)],
+        queryFn: () => import('@/api').then(m => m.CharactersService.charactersRead(parseInt(props.id!))),
+        staleTime: 0
+      })
+
+      const newCount = (newData.variants || []).length
+
+      if (newCount > currentCount) {
+        clearInterval(interval)
+        alert(`Successfully generated ${newCount - currentCount} new variants!`)
+      } else if (attempts >= maxAttempts) {
+        clearInterval(interval)
+        // Don't alert failure, just stop polling, maybe it takes longer or failed.
+      }
+    }, 2000)
+
   } catch (e: any) {
     alert(`Generation failed: ${e.message}`)
   }

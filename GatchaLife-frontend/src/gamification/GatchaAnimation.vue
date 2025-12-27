@@ -148,6 +148,13 @@ const rarityColor = (rarity: string) => {
                   <img v-if="currentCard?.card.image_url" :src="currentCard?.card.image_url"
                     class="absolute inset-0 w-full h-full object-cover z-0 transition-transform duration-1000 hover:scale-110" />
 
+<!-- Loading State -->
+                  <div v-else
+                    class="absolute inset-0 flex flex-col items-center justify-center text-white/50 space-y-2">
+                    <div class="w-10 h-10 border-4 border-white/20 border-t-white rounded-full animate-spin"></div>
+                    <span class="text-xs uppercase tracking-widest font-bold">Generating...</span>
+                  </div>
+
                   <!-- New Badge -->
                   <div v-if="currentCard?.is_new"
                     class="absolute top-6 right-6 z-20 bg-yellow-400 text-black text-sm font-black px-4 py-1.5 rounded-full shadow-[0_0_20px_rgba(250,204,21,0.5)] animate-bounce">

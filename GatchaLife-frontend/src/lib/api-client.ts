@@ -396,6 +396,16 @@ export const useCollection = (filters?: Ref<Record<string, unknown>> | Record<st
     if (!response.ok) throw new Error('Failed to fetch collection');
     return response.json();
   },
+  enabled: true,
+  refetchInterval: (query) => {
+    const data = query.state.data;
+    if (Array.isArray(data)) {
+      // Poll if any owned card has no image (generating)
+      const hasPending = data.some((item: any) => item.count > 0 && !item.card?.image_url);
+      if (hasPending) return 3000;
+    }
+    return false;
+  },
 });
 
 export const useCardDetails = (id: number) => useQuery({
@@ -406,6 +416,14 @@ export const useCardDetails = (id: number) => useQuery({
     return response.json();
   },
   enabled: !!id,
+  refetchInterval: (query) => {
+    const data = query.state.data;
+    // Poll if data exists but image_url is missing (generating)
+    if (data && !data.card?.image_url) {
+      return 1000;
+    }
+    return false;
+  },
 });
 
 export const useCardPreview = (params: Record<string, string>) => useQuery({
