@@ -27,7 +27,7 @@ COPY . .
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"]
+CMD ["sh", "-c", "python manage.py migrate && gunicorn gatchalife.wsgi:application --bind 0.0.0.0:8000 --workers 2 --threads 4 --reload"]
 
 # Stage 4: Production
 FROM base AS prod
@@ -44,4 +44,4 @@ RUN mkdir -p /app/staticfiles && mkdir -p /app/static/images
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "python manage.py collectstatic --noinput && python manage.py migrate && gunicorn gatchalife.wsgi:application --bind 0.0.0.0:8000 --timeout 120"]
+CMD ["sh", "-c", "python manage.py collectstatic --noinput && python manage.py migrate && gunicorn gatchalife.wsgi:application --bind 0.0.0.0:8000 --workers 4 --threads 4 --timeout 120"]
