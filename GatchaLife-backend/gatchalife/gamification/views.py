@@ -182,30 +182,36 @@ class CollectionViewSet(viewsets.ReadOnlyModelViewSet):
                 "style_id",
                 "theme_id",
                 "image",
+                "thumbnail",  # <--- Add this
                 "created_at",
             )
             .order_by("created_at")
         )
 
-        # Build map: (v_id, r_id, s_id, t_id) -> image_url
-        # Since we ordered by created_at, iterating will overwrite with latest
+        # Build map: (v_id, r_id, s_id, t_id) -> {image: url, thumbnail: url}
         image_map = {}
         for img in all_images:
-            if img["image"]:
-                key = (
-                    img["character_variant_id"],
-                    img["rarity_id"],
-                    img["style_id"],
-                    img["theme_id"],
-                )
-                # Construct URL manually to avoid object instantiation overhead
-                # Assuming standard file storage configuration
-                url = settings.MEDIA_URL + img["image"]
-                image_map[key] = url
+            # We construct a dict containing both URLs
+            key = (
+                img["character_variant_id"],
+                img["rarity_id"],
+                img["style_id"],
+                img["theme_id"],
+            )
 
-        # Prepare base context once
+            image_url = settings.MEDIA_URL + img["image"] if img["image"] else None
+
+            # Use thumbnail if available, otherwise fallback to full image
+            thumbnail_url = None
+            if img["thumbnail"]:
+                thumbnail_url = settings.MEDIA_URL + img["thumbnail"]
+            elif image_url:
+                thumbnail_url = image_url
+
+            image_map[key] = {"image_url": image_url, "thumbnail_url": thumbnail_url}
+
         base_context = self.get_serializer_context()
-        base_context["image_map"] = image_map
+        base_context["image_map"] = image_map  # Pass the new dict structure
 
         # Pre-fetch Rarity/Style/Theme objects for name lookup to ensure consistency if needed
         # But for constructing the "virtual" card, strings might be enough if Serializer handles it

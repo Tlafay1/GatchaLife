@@ -35,6 +35,7 @@ class CardSerializer(serializers.ModelSerializer):
     visual_override = serializers.CharField(source='character_variant.visual_override', read_only=True)
     description = serializers.CharField(source='character_variant.description', read_only=True)
     is_archived = serializers.SerializerMethodField()
+    thumbnail_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Card
@@ -55,6 +56,7 @@ class CardSerializer(serializers.ModelSerializer):
             "visual_override",
             "description",
             "is_archived",
+            "thumbnail_url",
         ]
 
     def get_is_archived(self, obj):
@@ -73,22 +75,17 @@ class CardSerializer(serializers.ModelSerializer):
         )
 
     def get_image_url(self, obj):
-        # Optimization: Check if we have an image map in context to avoid N+1
+        # Update to handle the new dict structure in image_map
         image_map = self.context.get("image_map")
         if image_map:
-            # key: (variant_id, rarity_id, style_id, theme_id)
-            key = (
-                obj.character_variant_id,
-                obj.rarity_id,
-                obj.style_id,
-                obj.theme_id,
-            )
-            image_url = image_map.get(key)
-            if image_url:
+            key = (obj.character_variant_id, obj.rarity_id, obj.style_id, obj.theme_id)
+            data = image_map.get(key)
+            if data:
+                url = data.get("image_url")
                 request = self.context.get("request")
-                if request:
-                    return request.build_absolute_uri(image_url)
-                return image_url
+                if request and url:
+                    return request.build_absolute_uri(url)
+                return url
             return None
 
         # Fallback to single query (slow)
@@ -116,6 +113,46 @@ class CardSerializer(serializers.ModelSerializer):
                 return url
             except ValueError:
                 return None
+        return None
+
+    def get_thumbnail_url(self, obj):
+        # New method for thumbnail
+        image_map = self.context.get("image_map")
+        if image_map:
+            key = (obj.character_variant_id, obj.rarity_id, obj.style_id, obj.theme_id)
+            data = image_map.get(key)
+            if data:
+                url = data.get("thumbnail_url")
+                request = self.context.get("request")
+                if request and url:
+                    return request.build_absolute_uri(url)
+                return url
+            return None
+
+        # Fallback logic for single object
+        from gatchalife.generated_image.models import GeneratedImage
+
+        image = (
+            GeneratedImage.objects.filter(
+                character_variant_id=obj.character_variant_id,
+                rarity_id=obj.rarity_id,
+                style_id=obj.style_id,
+                theme_id=obj.theme_id,
+            )
+            .order_by("-created_at")
+            .first()
+        )
+
+        if image:
+            # Return thumbnail if exists, else full image
+            target_field = image.thumbnail if image.thumbnail else image.image
+            if not target_field:
+                return None
+            url = target_field.url
+            request = self.context.get("request")
+            if request:
+                return request.build_absolute_uri(url)
+            return url
         return None
 
     def get_pose(self, obj):

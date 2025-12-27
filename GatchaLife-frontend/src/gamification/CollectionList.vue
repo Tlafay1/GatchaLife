@@ -386,8 +386,8 @@ const closeFullScreen = () => {
               :class="[rarityColor(item.card.rarity_name), item.card.is_archived ? 'grayscale-[0.7] opacity-90' : '']">
               <!-- Image -->
               <div class="absolute inset-0 bg-muted flex items-center justify-center overflow-hidden">
-                <template v-if="item.count > 0 && item.card.image_url">
-                  <img :src="item.card.image_url"
+                <template v-if="item.count > 0 && (item.card.thumbnail_url || item.card.image_url)">
+                  <img :src="item.card.thumbnail_url || item.card.image_url"
                     class="w-full h-full object-cover transition-transform group-hover:scale-110" loading="lazy" />
                 </template>
                 <template v-else-if="item.count > 0">
