@@ -11,6 +11,7 @@ import structlog
 from django.urls import reverse
 from gatchalife.generated_image.services import generate_image, match_card_configuration
 from gatchalife.generated_image.models import GeneratedImage
+from django.conf import settings
 
 logger = structlog.get_logger(__name__)
 
@@ -170,6 +171,42 @@ class CollectionViewSet(viewsets.ReadOnlyModelViewSet):
         # 3. Build comprehensive list
         combined_list = []
 
+        # Optimization: Prefetch all images for these variants to avoid N+1 in Serializer
+        # We fetch all images for the variants we are about to process
+        # This is much faster than querying per card
+        all_images = (
+            GeneratedImage.objects.filter(character_variant__in=variants_qs)
+            .values(
+                "character_variant_id",
+                "rarity_id",
+                "style_id",
+                "theme_id",
+                "image",
+                "created_at",
+            )
+            .order_by("created_at")
+        )
+
+        # Build map: (v_id, r_id, s_id, t_id) -> image_url
+        # Since we ordered by created_at, iterating will overwrite with latest
+        image_map = {}
+        for img in all_images:
+            if img["image"]:
+                key = (
+                    img["character_variant_id"],
+                    img["rarity_id"],
+                    img["style_id"],
+                    img["theme_id"],
+                )
+                # Construct URL manually to avoid object instantiation overhead
+                # Assuming standard file storage configuration
+                url = settings.MEDIA_URL + img["image"]
+                image_map[key] = url
+
+        # Prepare base context once
+        base_context = self.get_serializer_context()
+        base_context["image_map"] = image_map
+
         # Pre-fetch Rarity/Style/Theme objects for name lookup to ensure consistency if needed
         # But for constructing the "virtual" card, strings might be enough if Serializer handles it
         # Actually, we need to manually construct the dict to match Serializer output
@@ -210,15 +247,29 @@ class CollectionViewSet(viewsets.ReadOnlyModelViewSet):
 
                 if key in owned_map:
                     # User owns it - serialize normally
-                    serializer = self.get_serializer(owned_map[key])
+                    # Use manual instantiation to pass optimized context
+                    serializer = UserCardSerializer(
+                        owned_map[key], context=base_context
+                    )
                     combined_list.append(serializer.data)
                 else:
                     # User doesn't own it - create placeholder
                     # REQUEST 404: Don't show uncollected cards if they are legacy
-                    # (Assuming "si elles ne sont pas legacy" was a typo for "si elles sont legacy",
-                    # as hiding active uncollected cards contradicts the main feature)
                     if is_archived:
                         continue
+
+                    # Try to find image url from map for placeholder
+                    # We need the IDs for the key.
+                    # This is tricky because we only have names here.
+                    # Ideally we should map names to IDs or change image_map key to names.
+                    # But CardSerializer uses IDs.
+                    # For virtual cards, we don't use CardSerializer (we assume None).
+                    # Actually, we might want to show the image if it exists even if unowned?
+                    # The current code sets "image_url": None.
+                    # If we want to show image for unowned, we need to map names to IDs or use IDs if we have them.
+                    # We have variant.id. But we don't have rarity_id easily without refreshing cache.
+                    # However, the previous code essentially set image_url to None for virtual cards.
+                    # So we ignore image_map for virtual cards for now.
 
                     combined_list.append(
                         {

@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import Player, Quest, PlayerQuest, Card, UserCard
-from gatchalife.character.models import CharacterVariant
-from gatchalife.style.models import Rarity, Style, Theme
+# Removed unused imports
+from gatchalife.generated_image.services import match_card_configuration
 
 class PlayerSerializer(serializers.ModelSerializer):
     class Meta:
@@ -21,8 +21,6 @@ class PlayerQuestSerializer(serializers.ModelSerializer):
         model = PlayerQuest
         fields = ['id', 'quest', 'progress', 'completed', 'claimed']
         read_only_fields = ['completed', 'claimed']
-
-from gatchalife.generated_image.services import match_card_configuration
 
 
 class CardSerializer(serializers.ModelSerializer):
@@ -75,21 +73,49 @@ class CardSerializer(serializers.ModelSerializer):
         )
 
     def get_image_url(self, obj):
-        # Logic to find the generated image for this card
-        # This is a bit complex because GeneratedImage links to CharacterVariant, Rarity, Style, Theme
-        # We might need to fetch the latest GeneratedImage matching these criteria
+        # Optimization: Check if we have an image map in context to avoid N+1
+        image_map = self.context.get("image_map")
+        if image_map:
+            # key: (variant_id, rarity_id, style_id, theme_id)
+            key = (
+                obj.character_variant_id,
+                obj.rarity_id,
+                obj.style_id,
+                obj.theme_id,
+            )
+            image_url = image_map.get(key)
+            if image_url:
+                request = self.context.get("request")
+                if request:
+                    return request.build_absolute_uri(image_url)
+                return image_url
+            return None
+
+        # Fallback to single query (slow)
         from gatchalife.generated_image.models import GeneratedImage
-        image = GeneratedImage.objects.filter(
-            character_variant=obj.character_variant,
-            rarity=obj.rarity,
-            style=obj.style,
-            theme=obj.theme
-        ).order_by('-created_at').first()
+
+        image = (
+            GeneratedImage.objects.filter(
+                character_variant_id=obj.character_variant_id,
+                rarity_id=obj.rarity_id,
+                style_id=obj.style_id,
+                theme_id=obj.theme_id,
+            )
+            .order_by("-created_at")
+            .first()
+        )
+
         if image:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(image.image.url)
-            return image.image.url
+            try:
+                if not image.image:
+                    return None
+                url = image.image.url
+                request = self.context.get("request")
+                if request:
+                    return request.build_absolute_uri(url)
+                return url
+            except ValueError:
+                return None
         return None
 
     def get_pose(self, obj):
