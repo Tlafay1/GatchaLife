@@ -6,6 +6,7 @@ from .models import AsyncJob
 from .registry import JobRegistry
 import logging
 import json
+from django.core.files.uploadedfile import UploadedFile
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,16 @@ class N8NCallbackView(APIView):
     def post(self, request, *args, **kwargs):
         job_id = request.data.get("job_id")
         n8n_status = request.data.get("status")
-        data = request.data.get("data", {})
+
+        # Safe extraction of 'data' to avoid Files appearing in JSON fields
+        raw_data = request.data.get("data")
+
+        # If valid data is mixed with a file named 'data', request.data might return the file
+        if isinstance(raw_data, UploadedFile):
+            # Fallback: try to get the text value from POST specifically
+            raw_data = request.POST.get("data")
+
+        data = raw_data if raw_data is not None else {}
 
         # If multipart/form-data, 'data' might be a JSON string
         if isinstance(data, str):
