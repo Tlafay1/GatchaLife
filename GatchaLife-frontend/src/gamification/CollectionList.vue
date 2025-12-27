@@ -8,7 +8,7 @@ import {
 } from '@/lib/api-client';
 import { ref, computed, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { Search, FilterX, SlidersHorizontal, ChevronDown, ChevronUp, Maximize2, X, Lock } from 'lucide-vue-next';
+import { Search, FilterX, SlidersHorizontal, ChevronDown, ChevronUp, Maximize2, X, Lock, Sparkles } from 'lucide-vue-next';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -391,8 +391,17 @@ const closeFullScreen = () => {
                     class="w-full h-full object-cover transition-transform group-hover:scale-110" loading="lazy" />
                 </template>
                 <template v-else-if="item.count > 0">
-                   <div class="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
-                    Generating...
+                  <div
+                    class="w-full h-full flex flex-col items-center justify-center text-muted-foreground text-xs p-2">
+                    <div class="relative w-8 h-8 mb-2">
+                      <div
+                        class="absolute inset-0 border-2 border-primary/20 border-t-primary rounded-full animate-spin">
+                      </div>
+                      <div class="absolute inset-0 flex items-center justify-center">
+                        <Sparkles class="w-3 h-3 text-primary animate-pulse" />
+                      </div>
+                    </div>
+                    <span class="text-[10px] uppercase font-bold tracking-wider animate-pulse">Generating</span>
                   </div>
                 </template>
                 <template v-else>

@@ -2,7 +2,7 @@
 import { useCardDetails, useRerollCardImage, useCardPreview } from '@/lib/api-client';
 import { useRoute } from 'vue-router';
 import { ref, computed } from 'vue';
-import { Maximize2, X, RefreshCw, Loader2, Lock } from 'lucide-vue-next';
+import { Maximize2, X, RefreshCw, Loader2, Lock, Sparkles } from 'lucide-vue-next';
 
 const route = useRoute();
 const cardId = Number(route.params.id);
@@ -60,6 +60,20 @@ const rarityColor = (rarity: string) => {
             <template v-if="item.card.image_url">
                 <img :src="item.card.image_url"
                 class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+            </template>
+            <template v-else-if="item.count > 0 && !item.card.image_url">
+              <div
+                class="w-full h-full bg-slate-900 flex flex-col items-center justify-center p-4 text-center select-none">
+                <div class="mb-4 relative">
+                  <div class="w-16 h-16 rounded-full border-4 border-slate-700/50 border-t-secondary animate-spin">
+                  </div>
+                  <div class="absolute inset-0 flex items-center justify-center">
+                    <Sparkles class="w-6 h-6 text-secondary animate-pulse" />
+                  </div>
+                </div>
+                <span
+                  class="text-xs uppercase font-bold text-secondary tracking-widest animate-pulse">Generating...</span>
+              </div>
             </template>
             <template v-else>
                <div class="w-full h-full bg-slate-900 flex flex-col items-center justify-center p-4 text-center select-none bg-[radial-gradient(#333_1px,transparent_1px)] [background-size:16px_16px]">
