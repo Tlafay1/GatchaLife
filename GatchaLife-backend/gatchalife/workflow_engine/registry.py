@@ -10,11 +10,12 @@ class WorkflowHandler(ABC):
     """
     
     @abstractmethod
-    def handle_success(self, job, data):
+    def handle_success(self, job, data, files=None):
         """
         Called when the async job completes successfully.
         :param job: The AsyncJob instance.
         :param data: The JSON data returned by the workflow.
+        :param files: Optional dictionary of uploaded files (e.g. from request.FILES).
         """
         pass
 

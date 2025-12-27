@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 @JobRegistry.register("character_profiling")
 class CharacterProfilingHandler(WorkflowHandler):
-    def handle_success(self, job, data):
+    def handle_success(self, job, data, files=None):
         try:
             character = job.content_object
             if not isinstance(character, Character):
@@ -37,7 +37,7 @@ class CharacterProfilingHandler(WorkflowHandler):
 
 @JobRegistry.register("create_variants")
 class VariantGenerationHandler(WorkflowHandler):
-    def handle_success(self, job, data):
+    def handle_success(self, job, data, files=None):
         try:
             character = job.content_object
             if not isinstance(character, Character):

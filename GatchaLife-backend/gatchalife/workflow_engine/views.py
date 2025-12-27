@@ -5,8 +5,10 @@ from django.shortcuts import get_object_or_404
 from .models import AsyncJob
 from .registry import JobRegistry
 import logging
+import json
 
 logger = logging.getLogger(__name__)
+
 
 class N8NCallbackView(APIView):
     """
@@ -25,6 +27,15 @@ class N8NCallbackView(APIView):
         job_id = request.data.get("job_id")
         n8n_status = request.data.get("status")
         data = request.data.get("data", {})
+
+        # If multipart/form-data, 'data' might be a JSON string
+        if isinstance(data, str):
+            try:
+                data = json.loads(data)
+            except json.JSONDecodeError:
+                # If it's not JSON, keep it as is or log warning
+                pass
+
         error_msg = request.data.get("error", "")
 
         if not job_id:
@@ -54,7 +65,7 @@ class N8NCallbackView(APIView):
             try:
                 job.status = AsyncJob.Status.PROCESSING # Or keep processing until handler finishes?
                 job.result = data
-                handler.handle_success(job, data)
+                handler.handle_success(job, data, files=request.FILES)
                 
                 # If handler didn't fail, mark as completed
                 job.status = AsyncJob.Status.COMPLETED
