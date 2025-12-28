@@ -157,7 +157,7 @@ def zapier_webhook(request):
     # FIXME: Couldn't get zapier to send JSON body properly, so using form-encoded 'data' field
     data = request.data
     task_id = data.get("id")
-    title = data.get("task_name", "Unknown Task")
+    title = data.get("title", "Unknown Task")
 
     logger.info("webhook_received", task_id=task_id, title=title, raw_data=data)
 
