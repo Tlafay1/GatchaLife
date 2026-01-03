@@ -17,6 +17,15 @@ services:
       - proxy-network
       - postgres-network
 
+  redis:
+    image: redis:7-alpine
+    container_name: gatchalife-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - postgres-network
+
+
   backend:
     build:
       context: ./GatchaLife-backend
@@ -36,6 +45,39 @@ services:
     networks:
       - proxy-network
       - postgres-network
+
+  celery:
+    build:
+      context: ./GatchaLife-backend
+      target: dev
+    container_name: gatchalife-celery
+    command: celery -A gatchalife worker --loglevel=info
+    volumes:
+      - ./GatchaLife-backend:/app
+    env_file:
+      - .env
+    depends_on:
+      - db
+      - redis
+    networks:
+      - postgres-network
+
+  celery-beat:
+    build:
+      context: ./GatchaLife-backend
+      target: dev
+    container_name: gatchalife-celery-beat
+    command: celery -A gatchalife beat --loglevel=info
+    volumes:
+      - ./GatchaLife-backend:/app
+    env_file:
+      - .env
+    depends_on:
+      - db
+      - redis
+    networks:
+      - postgres-network
+
 
   frontend:
     build:
