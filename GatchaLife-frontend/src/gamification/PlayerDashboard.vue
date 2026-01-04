@@ -6,7 +6,6 @@ import LevelUpModal from '@/components/LevelUpModal.vue';
 import {
   Coins,
   Sparkles,
-  Gem,
   PlusCircle,
   ClipboardList,
   CheckCircle2,
@@ -174,57 +173,75 @@ const getDifficultyColor = (difficulty: string) => {
 
           <!-- LEFT COLUMN: Companion Spotlight (45%) -->
           <div
-            class="relative w-full lg:w-[45%] min-h-[400px] flex items-center justify-center bg-gradient-to-r from-black/20 to-transparent p-6 group/spotlight overflow-visible">
+            class="relative w-full lg:w-[45%] min-h-[400px] lg:min-h-[600px] flex items-center justify-center bg-gradient-to-b from-transparent via-indigo-950/20 to-indigo-950/40 p-6 group/spotlight overflow-visible border-b lg:border-b-0 lg:border-r border-white/5">
+
+            <!-- Ambient Glow behind character -->
+            <div
+              class="absolute inset-0 bg-radial-gradient from-indigo-500/10 to-transparent opacity-50 pointer-events-none">
+            </div>
 
             <!-- Loading State -->
-            <div v-if="isLoading" class="flex flex-col items-center gap-4 text-muted-foreground animate-pulse">
-              <Loader2 class="w-10 h-10 animate-spin" />
-              <span>Summoning Companion...</span>
+            <div v-if="isLoading" class="flex flex-col items-center gap-4 text-muted-foreground animate-pulse z-10">
+              <div class="relative">
+                <div class="absolute inset-0 bg-indigo-500/20 blur-xl rounded-full"></div>
+                <Loader2 class="w-10 h-10 animate-spin relative z-10 text-indigo-400" />
+              </div>
+              <span class="text-xs font-bold tracking-widest uppercase opacity-70">Summoning Companion...</span>
             </div>
 
             <!-- Error State -->
             <div v-else-if="isError"
-              class="text-center text-red-400 p-4 bg-black/40 rounded-xl border border-red-500/20">
-              <p class="font-bold mb-2">Connection Lost</p>
+              class="relative z-10 text-center text-red-400 p-6 bg-black/60 backdrop-blur-xl rounded-2xl border border-red-500/20 shadow-2xl">
+              <p class="font-bold mb-3 text-lg">Connection Lost</p>
               <button @click="refetchTamagotchi()"
-                class="px-4 py-2 bg-red-500/20 hover:bg-red-500/40 rounded-lg text-sm transition-colors">Reconnect</button>
+                class="px-6 py-2 bg-red-500/20 hover:bg-red-500/40 rounded-lg text-sm font-bold uppercase tracking-wide transition-all hover:scale-105 active:scale-95">Reconnect
+                System</button>
             </div>
 
             <!-- HATCH STATE (No Companion) -->
-            <div v-else-if="!tamagotchi" class="text-center">
+            <div v-else-if="!tamagotchi" class="text-center relative z-10">
               <button @click="showHatchModal = true"
-                class="group relative flex flex-col items-center gap-6 p-8 rounded-2xl hover:bg-white/5 transition-all duration-500 hover:scale-105">
+                class="group relative flex flex-col items-center gap-6 p-10 rounded-3xl hover:bg-white/5 transition-all duration-500 border border-transparent hover:border-white/10 hover:shadow-2xl hover:shadow-indigo-500/10">
                 <div
-                  class="w-24 h-24 sm:w-32 sm:h-32 flex items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full shadow-[0_0_50px_rgba(124,58,237,0.5)] animate-bounce group-hover:shadow-[0_0_80px_rgba(124,58,237,0.7)] transition-shadow">
-                  <Sparkles class="w-12 h-12 sm:w-16 sm:h-16 text-white" />
+                  class="w-32 h-32 sm:w-40 sm:h-40 flex items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full shadow-[0_0_50px_rgba(124,58,237,0.5)] animate-bounce group-hover:shadow-[0_0_100px_rgba(124,58,237,0.8)] transition-all duration-500">
+                  <Sparkles class="w-16 h-16 sm:w-20 sm:h-20 text-white" />
                 </div>
                 <div>
-                  <h3 class="text-2xl font-black text-white mb-2">Summon Companion</h3>
-                  <p class="text-indigo-200 text-sm">Click to begin your journey</p>
+                  <h3 class="text-3xl font-black text-white mb-2 tracking-tight">Summon Companion</h3>
+                  <p class="text-indigo-200 font-medium">Begin your journey</p>
                 </div>
               </button>
             </div>
 
             <!-- COMPANION ACTIVE STATE -->
             <div v-else-if="tamagotchi" class="relative w-full h-full flex flex-col items-center justify-center">
-              <!-- Main Character Image (Full Height) -->
+
+              <!-- Character Aura/Glow based on Mood -->
               <div
-                class="relative flex items-center justify-center h-[280px] sm:h-[400px] w-full filter drop-shadow-[0_0_15px_rgba(255,255,255,0.1)] hover:drop-shadow-[0_0_30px_rgba(255,255,255,0.3)] transition-all duration-500 z-10">
-                <img v-if="tamagotchi.character_image" :src="tamagotchi.character_image"
-                  class="h-full w-auto object-contain max-w-full animate-in fade-in zoom-in-95 duration-1000 select-none pointer-events-none"
-                  alt="My Companion" />
-                <div v-else class="text-9xl animate-bounce filter drop-shadow-2xl">🐣</div>
+                class="absolute inset-0 flex items-center justify-center pointer-events-none transition-opacity duration-1000"
+                :class="tamagotchi.mood > 50 ? 'opacity-100' : 'opacity-20'">
+                <div class="w-[300px] h-[300px] bg-pink-500/20 rounded-full blur-[100px] animate-pulse"></div>
               </div>
 
-              <!-- Settings & Library Buttons -->
-              <div class="absolute top-4 left-4 z-20 flex flex-col gap-2">
+              <!-- Main Character Image (Dynamic Sizing) -->
+              <div
+                class="relative flex items-center justify-center h-[350px] sm:h-[480px] w-full transition-all duration-500 z-10 group-hover/spotlight:scale-105">
+                <img v-if="tamagotchi.character_image" :src="tamagotchi.character_image"
+                  class="h-full w-auto object-contain max-w-full drop-shadow-[0_0_25px_rgba(0,0,0,0.5)] animate-in fade-in zoom-in-95 duration-1000 select-none pointer-events-none filter"
+                  :class="tamagotchi.mood === 0 ? 'grayscale brightness-50 contrast-125' : ''"
+                  alt="My Companion" />
+                <div v-else class="text-9xl animate-bounce filter drop-shadow-2xl grayscale opacity-50">🐣</div>
+              </div>
+
+              <!-- Settings & Library Buttons (Glassmorphism) -->
+              <div class="absolute top-4 left-4 z-20 flex flex-col gap-3">
                 <button @click="showSettingsModal = true"
-                  class="p-2 rounded-full bg-black/40 text-black/50 hover:text-white hover:bg-black/60 backdrop-blur-sm shadow-lg border border-white/5 transition-all hover:scale-110 active:scale-95"
+                  class="p-3 rounded-2xl bg-black/20 text-white/70 hover:text-white hover:bg-black/80 backdrop-blur-xl shadow-lg border border-white/10 transition-all hover:scale-110 active:scale-95 group/btn"
                   title="Settings">
-                  <Settings class="w-5 h-5" />
+                  <Settings class="w-5 h-5 group-hover/btn:rotate-90 transition-transform duration-500" />
                 </button>
                 <button @click="showImageManager = true"
-                  class="p-2 rounded-full bg-black/40 text-black/50 hover:text-white hover:bg-black/60 backdrop-blur-sm shadow-lg border border-white/5 transition-all hover:scale-110 active:scale-95"
+                  class="p-3 rounded-2xl bg-black/20 text-white/70 hover:text-white hover:bg-black/80 backdrop-blur-xl shadow-lg border border-white/10 transition-all hover:scale-110 active:scale-95"
                   title="Manage Images">
                   <Library class="w-5 h-5" />
                 </button>
@@ -232,213 +249,245 @@ const getDifficultyColor = (difficulty: string) => {
 
               <!-- DIALOGUE BUBBLE -->
               <div v-if="interactionMessage"
-                class="absolute top-[20%] left-1/2 -translate-x-1/2 z-30 animate-in fade-in zoom-in slide-in-from-bottom-2 duration-300">
+                class="absolute top-[15%] left-1/2 -translate-x-1/2 z-30 animate-in fade-in zoom-in slide-in-from-bottom-2 duration-300 w-max max-w-[90%]">
                 <div
-                  class="relative bg-white text-black px-6 py-3 rounded-2xl shadow-xl font-bold text-sm min-w-[200px] text-center">
-                  {{ interactionMessage }}
-                  <div class="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white rotate-45"></div>
+                  class="relative bg-white/95 backdrop-blur-sm text-slate-900 px-6 py-3 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.2)] font-bold text-sm min-w-[200px] text-center border-2 border-white/50">
+                  <span class="text-base">{{ interactionMessage }}</span>
+                  <div
+                    class="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white rotate-45 border-r-2 border-b-2 border-white/50">
+                  </div>
                 </div>
               </div>
 
-              <!-- Name Badge (Floating) -->
+              <!-- Name Badge (Floating & Premium) -->
               <div
-                class="absolute bottom-6 inset-x-0 mx-auto w-max max-w-[90%] bg-black/40 backdrop-blur-lg border border-white/10 px-6 py-2 rounded-full text-center shadow-2xl transform translate-y-4 opacity-100 lg:group-hover/spotlight:translate-y-0 lg:group-hover/spotlight:opacity-100 transition-all duration-300 z-20">
-                <span class="font-black text-white tracking-wide text-xl">{{ tamagotchi.name }}</span>
+                class="absolute bottom-8 inset-x-0 mx-auto w-max max-w-[90%] z-20 transition-all duration-300 group-hover/spotlight:-translate-y-2">
+                <div
+                  class="bg-black/60 backdrop-blur-xl border border-white/10 px-8 py-3 rounded-full shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] flex items-center gap-3">
+                  <span class="w-2 h-2 rounded-full animate-pulse"
+                    :class="tamagotchi.mood > 50 ? 'bg-emerald-400' : (tamagotchi.mood > 20 ? 'bg-yellow-400' : 'bg-red-500')"></span>
+                  <span class="font-black text-white tracking-wide text-xl">{{ tamagotchi.name }}</span>
+                </div>
               </div>
             </div>
 
-            <!-- DEAD STATE OVERLAY -->
+            <!-- DEAD STATE OVERLAY (System Failure Theme) -->
             <div v-if="tamagotchi?.mood === 0"
-              class="absolute inset-0 z-40 bg-black/60 flex flex-col items-center justify-center text-center p-8 backdrop-blur-sm/20">
-              <h2 class="text-3xl font-black text-red-500 mb-2">COMPANION LOST</h2>
-              <p class="text-slate-400 mb-6 max-w-xs">Your companion has faded away due to neglect. Restore them?</p>
-              <button @click="handleResurrect"
-                class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-full flex items-center gap-2 transition-all hover:scale-105 active:scale-95 shadow-[0_0_30px_rgba(220,38,38,0.5)]">
-                <Heart class="w-5 h-5 fill-current" />
-                Resurrect (1000 Coins)
-              </button>
+              class="absolute inset-0 z-40 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center text-center p-8 transition-all duration-1000">
+              <div
+                class="w-full max-w-sm p-8 rounded-3xl bg-black/80 border border-red-500/30 shadow-[0_0_60px_rgba(220,38,38,0.2)] relative overflow-hidden">
+                <div
+                  class="absolute inset-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,rgba(220,38,38,0.05)_10px,rgba(220,38,38,0.05)_20px)] pointer-events-none">
+                </div>
+
+                <h2
+                  class="text-4xl font-black text-red-500 mb-2 tracking-tighter uppercase drop-shadow-[0_0_10px_rgba(220,38,38,0.5)]">
+                  Critial Failure</h2>
+                <div class="h-0.5 w-16 bg-red-500/50 mx-auto mb-6"></div>
+
+                <p class="text-red-200/70 mb-8 font-mono text-sm leading-relaxed">
+                  Vital signs undetected.<br>Companion data fragmenting.<br>Immediate restoration required.
+                </p>
+
+                <button @click="handleResurrect"
+                  class="w-full py-4 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95 shadow-[0_0_30px_rgba(220,38,38,0.4)] group uppercase tracking-widest text-sm">
+                  <Heart class="w-5 h-5 fill-current group-hover:animate-ping" />
+                  <span>Initialize Restore</span>
+                  <span class="opacity-60 text-xs ml-1">(1000c)</span>
+                </button>
+              </div>
             </div>
           </div>
 
           <!-- RIGHT COLUMN: Dashboard & Stats (55%) -->
           <div
-            class="relative flex-1 p-6 sm:p-10 flex flex-col justify-center border-t lg:border-t-0 lg:border-l border-white/5 bg-white/[0.02]">
+            class="relative flex-1 p-8 sm:p-12 flex flex-col justify-between border-t lg:border-t-0 lg:border-l border-white/5 bg-gradient-to-br from-white/[0.02] to-transparent relative overflow-hidden">
 
 
 
-            <!-- Welcome Header -->
-            <div class="mb-10">
+
+
+
+
+            <!-- Decorative background elements -->
+            <div class="absolute top-0 right-0 p-12 opacity-10 pointer-events-none">
+              <Sparkles class="w-64 h-64 text-white" />
+            </div>
+
+            <!-- Header -->
+            <div class="relative z-10 mb-10">
               <div
                 class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-bold uppercase tracking-wider text-emerald-400 mb-4 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
                 <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                 Connected
               </div>
 
-              <h1 class="text-4xl lg:text-5xl font-black tracking-tight leading-none mb-2">
+              <h1 class="text-4xl lg:text-5xl font-black tracking-tight leading-none mb-4">
                 Welcome back, <br />
                 <span
                   class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 animate-gradient-x">{{
                     player?.user?.username || 'Player' }}</span>
               </h1>
 
-              <p class="text-slate-400 text-sm">Complete tasks to evolve your companion.</p>
+              <p class="text-slate-400 text-sm font-medium max-w-md leading-relaxed">System ready. Tasks synced.
+                Completing objectives will increase your synchronization rate.</p>
             </div>
 
-            <!-- XP & Level Progress -->
-            <div
-              class="mb-8 p-6 rounded-2xl bg-white/5 border border-white/10 relative overflow-hidden group hover:bg-white/10 transition-colors duration-500">
-              <div
-                class="absolute -top-6 -right-6 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl group-hover:bg-indigo-500/20 transition-all">
-              </div>
-              <div
-                class="absolute top-0 right-0 p-4 opacity-5 font-black text-7xl select-none group-hover:scale-110 transition-transform duration-700">
-                LVL {{ player?.level || 1 }}</div>
+            <!-- Stats & Vitals Grid -->
+            <div class="grid gap-6 relative z-10">
 
-              <div class="flex justify-between items-end mb-3 relative z-10">
-                <div>
-                  <div
-                    class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1 group-hover:text-indigo-300 transition-colors">
-                    Current Level</div>
-                  <div class="text-3xl font-black text-white">{{ player?.level || 1 }}</div>
-                </div>
-                <div class="text-right">
-                  <span class="text-indigo-400 font-bold text-lg">{{ player?.xp || 0 }}</span>
-                  <span class="text-slate-500 text-sm font-medium"> / {{ (player?.level || 1) * 100 }} XP</span>
-                </div>
-              </div>
-
-              <!-- XP Bar -->
-
+              <!-- Level Logic Card -->
               <div
-                class="h-4 w-full bg-black/40 rounded-full overflow-hidden backdrop-blur-sm border border-white/5 relative z-10">
+                class="p-6 rounded-2xl bg-black/20 border border-white/5 backdrop-blur-sm hover:bg-black/30 transition-all group relative overflow-hidden">
                 <div
-                  class="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 shadow-[0_0_20px_rgba(99,102,241,0.4)] relative overflow-hidden transition-all duration-1000 ease-out"
-                  :style="{ width: `${xpPercentage}%` }">
+                  class="absolute inset-0 bg-gradient-to-r from-indigo-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700">
+                </div>
+
+                <div class="flex justify-between items-end mb-3 relative z-10">
+                  <div>
+                    <div
+class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">
+                      Sync Level</div>
+                    <div class="text-4xl font-black text-white tracking-tighter">{{ player?.level || 1 }}</div>
+                  </div>
+                  <div class="text-right">
+                    <span class="text-indigo-400 font-bold text-lg">{{ player?.xp || 0 }}</span>
+                    <span class="text-slate-500 text-sm font-medium"> / {{ (player?.level || 1) * 100 }} XP</span>
+                  </div>
+                </div>
+
+                <!-- Enhanced XP Bar -->
+                <div
+                  class="h-3 w-full bg-slate-800/50 rounded-full overflow-hidden backdrop-blur-sm border border-white/5 relative z-10">
                   <div
-                    class="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent w-full -translate-x-full animate-[shimmer_2s_infinite]">
+                    class="h-full bg-gradient-to-r from-indigo-600 via-purple-500 to-pink-500 shadow-[0_0_15px_rgba(168,85,247,0.5)] relative overflow-hidden transition-all duration-1000 ease-out"
+                    :style="{ width: `${xpPercentage}%` }">
+                    <div
+                      class="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent w-full -translate-x-full animate-[shimmer_2s_infinite]">
+                    </div>
+                  </div>
+                </div>
+
+
+
+         
+
+
+
+                <div class="mt-3 flex justify-between items-center relative z-10">
+                  <div
+                    class="px-2 py-1 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold uppercase tracking-wider">
+                    Luck +{{ Math.min((player?.level || 1) * 0.5, 20).toFixed(1) }}%
+                  </div>
+                  <span class="text-xs text-slate-500 font-medium">{{ Math.floor(((player?.level || 1) * 100) -
+                    (player?.xp || 0)) }} XP to next level</span>
+                </div>
+              </div>
+
+              <!-- Companion Vitals (if Active) -->
+              <div v-if="tamagotchi" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <!-- Mood Card -->
+                <div
+                  class="p-5 rounded-2xl bg-slate-900/40 border border-white/10 relative overflow-hidden group/stat hover:border-pink-500/30 transition-all">
+                  <div class="flex justify-between items-center mb-4">
+                    <span
+                      class="text-xs font-bold text-slate-400 uppercase tracking-widest group-hover/stat:text-pink-300 transition-colors">Mood</span>
+                    <Heart class="w-4 h-4 text-pink-500/50 group-hover/stat:text-pink-400 transition-colors" />
+                  </div>
+
+                  <div class="flex items-end gap-2 mb-2">
+                    <span class="text-3xl font-black text-white">{{ tamagotchi.mood.toFixed(0) }}</span>
+                    <span class="text-sm font-bold text-slate-500 mb-1">/ 100</span>
+                  </div>
+
+                  <div class="h-1.5 w-full bg-black/40 rounded-full overflow-hidden">
+                    <div class="h-full bg-gradient-to-r from-pink-600 to-pink-400 transition-all duration-1000"
+                      :style="{ width: `${tamagotchi.mood}%` }"></div>
+                  </div>
+                </div>
+
+                <!-- Actions Panel -->
+                <div
+                  class="p-5 rounded-2xl bg-slate-900/40 border border-white/10 flex flex-col justify-center gap-3 relative overflow-hidden group/panel hover:border-indigo-500/30 transition-all">
+                  <div
+                    class="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 opacity-0 group-hover/panel:opacity-100 transition-opacity">
+                  </div>
+
+                  <h3 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Interactions</h3>
+                  <div class="flex gap-2 relative z-10">
+                    <button @click="handleFeed" :disabled="tamagotchi.mood === 0"
+                      class="flex-1 py-2 px-3 bg-white/5 hover:bg-white/10 active:bg-white/20 rounded-xl border border-white/5 flex items-center justify-center gap-2 transition-all disabled:opacity-30 disabled:cursor-not-allowed group/btn hover:border-orange-500/30">
+                      <Utensils class="w-4 h-4 text-slate-400 group-hover/btn:text-orange-400 transition-colors" />
+                      <span class="text-xs font-bold text-slate-300 group-hover/btn:text-white">Feed</span>
+                    </button>
+                    <button @click="handlePet" :disabled="tamagotchi.mood === 0"
+                      class="flex-1 py-2 px-3 bg-white/5 hover:bg-white/10 active:bg-white/20 rounded-xl border border-white/5 flex items-center justify-center gap-2 transition-all disabled:opacity-30 disabled:cursor-not-allowed group/btn hover:border-pink-500/30">
+                      <Heart
+                        class="w-4 h-4 text-slate-400 group-hover/btn:text-pink-400 transition-colors group-hover/btn:scale-110" />
+                      <span class="text-xs font-bold text-slate-300 group-hover/btn:text-white">Pet</span>
+                    </button>
                   </div>
                 </div>
               </div>
-
-
-
-              <div class="mt-3 text-xs text-slate-400 flex justify-between font-medium">
-                <span class="flex items-center gap-1">Luck Bonus: <span
-                    class="text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded text-[10px]">+{{
-                      Math.min((player?.level || 1) * 0.5, 20).toFixed(1) }}%</span></span>
-                <span>{{ Math.floor(((player?.level || 1) * 100) - (player?.xp || 0)) }} XP to next level</span>
-              </div>
             </div>
 
-            <!-- Active Companion Stats (If Active) -->
-            <div v-if="tamagotchi"
-              class="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-right-4 duration-700 delay-100">
-              <!-- Mood Stat -->
-              <div
-                class="p-4 rounded-xl bg-slate-900/40 border border-white/10 hover:border-pink-500/30 transition-all group/stat">
-                <div class="flex justify-between items-center mb-2">
-                  <span
-                    class="text-xs font-bold text-slate-400 uppercase group-hover/stat:text-pink-300 transition-colors">Mood</span>
-                  <span class="text-sm font-black text-pink-400">{{ tamagotchi.mood.toFixed(0) }}%</span>
-                </div>
-
-                <div class="h-2 w-full bg-black/40 rounded-full overflow-hidden">
-                  <div class="h-full bg-gradient-to-r from-pink-600 to-pink-400 transition-all duration-1000"
-                    :style="{ width: `${tamagotchi.mood}%` }"></div>
-                </div>
-              </div>
-
-              <!-- Interaction Buttons -->
-              <div class="p-4 rounded-xl bg-slate-900/40 border border-white/10 flex flex-col justify-center gap-2">
-                <div class="flex gap-2">
-                  <button @click="handleFeed" :disabled="tamagotchi.mood === 0"
-                    class="flex-1 py-1.5 px-2 bg-white/5 hover:bg-white/10 active:bg-white/20 rounded-lg border border-white/5 flex flex-col items-center justify-center gap-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed group">
-                    <Utensils class="w-4 h-4 text-orange-400 group-hover:scale-110 transition-transform" />
-                    <span class="text-[10px] font-bold text-slate-300">Feed</span>
-                  </button>
-                  <button @click="handlePet" :disabled="tamagotchi.mood === 0"
-                    class="flex-1 py-1.5 px-2 bg-white/5 hover:bg-white/10 active:bg-white/20 rounded-lg border border-white/5 flex flex-col items-center justify-center gap-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed group">
-                    <Heart class="w-4 h-4 text-pink-400 group-hover:scale-110 transition-transform" />
-                    <span class="text-[10px] font-bold text-slate-300">Pet</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-
-
-
-
-
-
-
-
-            <!-- Actions Bar -->
-            <div class="mt-8 flex flex-col sm:flex-row gap-4">
-
-
- 
-            <button @click="showManualTaskModal = true"
-                class="flex-1 py-4 px-6 bg-white/5 hover:bg-white/10 hover:shadow-lg hover:shadow-emerald-500/10 border border-white/10 hover:border-emerald-500/30 rounded-xl font-bold flex items-center justify-center gap-3 transition-all group w-full">
-                <div class="bg-emerald-500/20 p-1.5 rounded-lg group-hover:scale-110 transition-transform">
+            <!-- Manual Task & Bottom Actions -->
+            <div class="mt-8 relative z-10 pt-6 border-t border-white/5 flex gap-4">
+              <button @click="showManualTaskModal = true"
+                class="flex-1 py-4 px-6 bg-white/5 hover:bg-white/10 hover:shadow-lg hover:shadow-emerald-500/10 border border-white/10 hover:border-emerald-500/30 rounded-2xl font-bold flex items-center justify-center gap-3 transition-all group w-full">
+                <div class="bg-emerald-500/20 p-2 rounded-xl group-hover:scale-110 transition-transform">
                   <PlusCircle class="w-5 h-5 text-emerald-400" />
                 </div>
-                <span class="group-hover:text-white text-slate-200">Add Manual Task</span>
-
-
- 
-            </button>
+                <span class="text-slate-300 group-hover:text-white font-medium">Add Manual Task</span>
+              </button>
 
 
 
 
+       
 
 
 
-              <div
-                class="px-6 py-4 rounded-xl bg-black/20 border border-white/5 flex items-center gap-3 justify-center min-w-[160px]">
-                <div class="relative flex h-3 w-3">
-                  <span
-                    class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                  <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
 
-
-
- 
-              </div>
-
-                <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">Listening</span>
-              </div>
+           
             </div>
-
           </div>
         </div>
       </div>
 
       <!-- Stats Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8" v-motion-slide-visible-once-bottom>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-12" v-motion-slide-visible-once-bottom>
         <StatCard title="Tasks Completed" :value="stats?.completed_today || 0" :icon="CheckCircle2"
-          color="text-green-500" bg-gradient="from-green-500/10 to-transparent" />
+          color="text-emerald-400" bg-gradient="from-emerald-500/10 to-transparent"
+          class="bg-slate-900 border-white/10 shadow-lg hover:shadow-emerald-500/10 hover:border-emerald-500/30 transition-all" />
 
-        <StatCard title="Gatcha Coins" :value="player?.gatcha_coins || 0" :icon="Coins" color="text-yellow-500"
-          bg-gradient="from-yellow-500/10 to-transparent" />
+        <StatCard title="Gatcha Coins" :value="player?.gatcha_coins || 0" :icon="Coins" color="text-yellow-400"
+          bg-gradient="from-yellow-500/10 to-transparent"
+          class="bg-slate-900 border-white/10 shadow-lg hover:shadow-yellow-500/10 hover:border-yellow-500/30 transition-all" />
 
-        <StatCard title="Collection" :value="collection?.length || 0" :icon="Library" color="text-purple-500"
-          bg-gradient="from-purple-500/10 to-transparent" clickable @click="$router.push('/collection')" />
+        <StatCard title="Collection" :value="collection?.length || 0" :icon="Library" color="text-purple-400"
+          bg-gradient="from-purple-500/10 to-transparent" clickable @click="$router.push('/collection')"
+          class="bg-slate-900 border-white/10 shadow-lg hover:shadow-purple-500/10 hover:border-purple-500/30 transition-all cursor-pointer" />
 
         <StatCard title="Current Streak" :value="`${stats?.current_streak || 0} Days`" :icon="Flame"
-          color="text-orange-500" bg-gradient="from-orange-500/10 to-transparent" />
+          color="text-orange-400" bg-gradient="from-orange-500/10 to-transparent"
+          class="bg-slate-900 border-white/10 shadow-lg hover:shadow-orange-500/10 hover:border-orange-500/30 transition-all" />
       </div>
 
       <!-- Main Content Grid -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
 
         <!-- Summon Section -->
-        <div class="lg:col-span-2 space-y-6" v-motion :initial="{ opacity: 0, x: -20 }"
+        <div class="xl:col-span-2 space-y-6" v-motion :initial="{ opacity: 0, x: -20 }"
           :enter="{ opacity: 1, x: 0, transition: { delay: 400 } }">
           <div class="flex items-center justify-between">
-            <h2 class="text-2xl font-bold tracking-tight">Summon Cards</h2>
-            <div class="text-sm text-muted-foreground">100 Coins / Roll</div>
+            <h2 class="text-2xl font-black tracking-tight text-slate-800 dark:text-white flex items-center gap-2">
+              <Sparkles class="w-5 h-5 text-indigo-500" />
+              Summon Cards
+            </h2>
+            <div class="text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100">
+              100
+              Coins / Roll</div>
           </div>
 
           <SummonBanner />
@@ -447,54 +496,76 @@ const getDifficultyColor = (difficulty: string) => {
         <!-- Recent Activity Feed -->
         <div class="space-y-6" v-motion :initial="{ opacity: 0, x: 20 }"
           :enter="{ opacity: 1, x: 0, transition: { delay: 600 } }">
-          <h2 class="text-2xl font-bold tracking-tight">Recent Activity</h2>
+          <div class="flex items-center justify-between">
+            <h2 class="text-2xl font-black tracking-tight text-slate-800 dark:text-white">Recent Activity</h2>
+            <router-link to="/history"
+              class="text-xs font-bold text-indigo-500 hover:text-indigo-600 uppercase tracking-widest transition-colors">
+              View All
+            </router-link>
+          </div>
 
-          <div class="bg-card border border-border rounded-3xl p-6 shadow-sm min-h-[400px]">
+          <div
+            class="bg-slate-900 border border-white/10 rounded-3xl p-6 shadow-xl min-h-[400px] relative overflow-hidden">
+            <!-- Glossy reflection -->
+            <div
+              class="absolute top-0 right-0 w-full h-full bg-gradient-to-bl from-white/5 to-transparent pointer-events-none">
+            </div>
+
             <div v-if="statsLoading" class="flex justify-center py-8">
               <span class="animate-spin text-muted-foreground">↻</span>
             </div>
 
-            <div v-else-if="stats?.recent_activity?.length" class="space-y-6 relative">
+            <div v-else-if="stats?.recent_activity?.length" class="space-y-8 relative z-10">
               <!-- Timeline Line -->
-              <div class="absolute left-4 top-2 bottom-2 w-0.5 bg-border"></div>
+              <div class="absolute left-[19px] top-2 bottom-2 w-[2px] bg-white/5"></div>
 
-              <div v-for="task in stats.recent_activity" :key="task.id" class="relative pl-10 group">
+
+
+            <div v-for="task in stats.recent_activity" :key="task.id" class="relative pl-12 group">
                 <!-- Timeline Dot -->
                 <div
-                  class="absolute left-[13px] top-1.5 w-2.5 h-2.5 rounded-full bg-green-500 ring-4 ring-background group-hover:scale-125 transition-transform">
+                  class="absolute left-[15px] top-1.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-black/50 group-hover:scale-150 group-hover:ring-emerald-500/30 transition-all duration-300 z-10">
                 </div>
 
-                <div class="space-y-1">
-                  <div class="font-bold text-sm line-clamp-2 group-hover:text-primary transition-colors">{{ task.title
-                    }}</div>
-                  <div class="text-xs text-muted-foreground">{{ new Date(task.processed_at).toLocaleTimeString([],
-                    { hour: '2-digit', minute: '2-digit' }) }}</div>
+                <div class="space-y-2">
+                  <div class="flex flex-col">
+                    <div
+                      class="font-bold text-sm line-clamp-2 text-slate-200 group-hover:text-white transition-colors duration-300">
+                      {{ task.title }}</div>
+                    <div class="text-[10px] uppercase tracking-widest font-bold text-slate-600 mt-1">{{ new
+                      Date(task.processed_at).toLocaleTimeString([],
 
-                  <div class="flex flex-wrap gap-2 mt-1">
+ 
+                    { hour: '2-digit', minute: '2-digit' }) }}</div>
+                  </div>
+
+
+
+                <div class="flex flex-wrap gap-2">
                     <!-- XP Badge -->
                     <div
-                      class="inline-flex items-center gap-1.5 text-xs font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md border border-blue-500/20">
+                      class="inline-flex items-center gap-1.5 text-[10px] font-bold text-blue-300 bg-blue-500/10 px-2 py-1 rounded border border-blue-500/20">
                       <PlusCircle class="w-3 h-3" />
                       {{ task.xp_gain || '?' }} XP
                     </div>
 
                     <!-- Coins Badge -->
                     <div
-                      class="inline-flex items-center gap-1.5 text-xs font-bold text-yellow-500 bg-yellow-500/10 px-2 py-0.5 rounded-md border border-yellow-500/20">
+                      class="inline-flex items-center gap-1.5 text-[10px] font-bold text-yellow-300 bg-yellow-500/10 px-2 py-1 rounded border border-yellow-500/20">
                       <Coins class="w-3 h-3" />
                       {{ task.coin_gain || '?' }}
                     </div>
 
                     <!-- Difficulty Badge -->
                     <div v-if="task.difficulty"
-                      class="inline-flex items-center gap-1.5 text-xs font-bold px-2 py-0.5 rounded-md border capitalize"
+                      class="inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded border capitalize"
                       :class="getDifficultyColor(task.difficulty)">
                       {{ task.difficulty }}
                     </div>
 
                     <!-- Crit Badge -->
                     <div v-if="task.is_crit"
-                      class="inline-flex items-center gap-1.5 text-xs font-black text-purple-500 bg-purple-500/10 px-2 py-0.5 rounded-md border border-purple-500/20 animate-pulse">
+                      class="inline-flex items-center gap-1.5 text-[10px] font-black text-purple-300 bg-purple-500/10 px-2 py-1 rounded border border-purple-500/20 animate-pulse shadow-[0_0_10px_rgba(168,85,247,0.3)]">
                       <Sparkles class="w-3 h-3" />
                       CRIT!
                     </div>
@@ -503,18 +574,12 @@ const getDifficultyColor = (difficulty: string) => {
               </div>
             </div>
 
-            <div v-else class="text-center py-12 text-muted-foreground">
-              <div class="inline-flex p-4 rounded-full bg-muted mb-4">
-                <ClipboardList class="w-8 h-8" />
+            <div v-else class="flex flex-col items-center justify-center py-12 text-slate-500 h-full">
+              <div class="inline-flex p-4 rounded-full bg-white/5 mb-4 animate-pulse">
+                <ClipboardList class="w-8 h-8 opacity-50" />
               </div>
-              <p>No tasks completed yet.</p>
-              <p class="text-sm mt-2">Sync TickTick to get started!</p>
-            </div>
-
-            <div class="mt-6 pt-4 border-t border-border text-center">
-              <router-link to="/history" class="text-sm font-bold text-primary hover:underline">
-                View Full History →
-              </router-link>
+              <p class="font-bold">No tasks completed yet.</p>
+              <p class="text-xs mt-2 opacity-50">Sync TickTick to get started!</p>
             </div>
           </div>
         </div>

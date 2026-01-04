@@ -13,22 +13,27 @@ defineProps<{
 
 <template>
   <div 
-    class="relative overflow-hidden rounded-2xl border border-border/50 bg-card/50 p-6 shadow-lg backdrop-blur-sm transition-all duration-300 group"
-    :class="[clickable ? 'hover:scale-[1.02] hover:shadow-xl cursor-pointer' : '']"
+   class="relative overflow-hidden rounded-2xl border border-white/5 p-6 shadow-lg backdrop-blur-md transition-all duration-300 group"
+    :class="[clickable ? 'hover:scale-[1.02] hover:shadow-xl cursor-pointer' : '', $attrs.class ? '' : 'bg-black/20']"
   >
     <!-- Background Gradient -->
-    <div v-if="bgGradient" :class="['absolute inset-0 bg-gradient-to-br opacity-50 transition-opacity group-hover:opacity-70', bgGradient]"></div>
+    <div v-if="bgGradient"
+      :class="['absolute inset-0 bg-gradient-to-br opacity-40 transition-opacity group-hover:opacity-60', bgGradient]">
+    </div>
     
     <div class="relative z-10 flex items-center justify-between">
       <div>
-        <div class="text-sm font-bold uppercase tracking-wider text-muted-foreground/80 mb-1">{{ title }}</div>
-        <div :class="['text-3xl font-black tracking-tight', color || 'text-foreground']">
+        <div
+          class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1 group-hover:text-slate-200 transition-colors">
+          {{ title }}</div>
+        <div :class="['text-3xl font-black tracking-tighter drop-shadow-sm', color || 'text-white']">
           {{ value }}
         </div>
       </div>
       
-      <div v-if="icon" :class="['p-3 rounded-xl bg-background/50 backdrop-blur-md shadow-sm', color]">
-        <component :is="icon" class="w-8 h-8" />
+<div v-if="icon"
+        :class="['p-3 rounded-xl bg-white/5 backdrop-blur-md shadow-inner border border-white/10', color]">
+        <component :is="icon" class="w-6 h-6 group-hover:scale-110 transition-transform" />
       </div>
     </div>
   </div>
