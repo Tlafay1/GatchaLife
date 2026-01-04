@@ -77,9 +77,24 @@ def process_completed_task(task_id, title, raw_tags, user):
     is_crit = random.random() < 0.10
     crit_multiplier = 2.0 if is_crit else 1.0
 
+    # 5. Tamagotchi Mood Bonus
+    tamagotchi_bonus_multiplier = 1.0
+    from gatchalife.gamification.models import ActiveTamagotchi
+
+    pet = ActiveTamagotchi.objects.filter(player=player).first()
+
+    if pet and pet.mood >= 60:
+        tamagotchi_bonus_multiplier = 1.3  # +30% coins if happy/neutral+
+
     # Calcul Final
     currency_gain = int(
-        (base_currency * difficulty_multiplier * streak_multiplier * crit_multiplier)
+        (
+            base_currency
+            * difficulty_multiplier
+            * streak_multiplier
+            * crit_multiplier
+            * tamagotchi_bonus_multiplier
+        )
         + daily_bonus
     )
     xp_gain = int(currency_gain * 0.5)

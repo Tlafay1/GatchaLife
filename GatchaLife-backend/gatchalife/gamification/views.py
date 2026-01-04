@@ -742,9 +742,15 @@ class ActiveTamagotchiViewSet(viewsets.ModelViewSet):
                         status=status.HTTP_400_BAD_REQUEST,
                     )
 
+        # Efficiency calculation
+        efficiency_multiplier = 1.0
+        if pet.mood < 60:
+            efficiency_multiplier = 0.5  # 50% efficiency if unhappy
+
         # Apply effect
         pet.last_feed_time = now
-        pet.mood = min(100.0, pet.mood + 5.0)
+        gain = 5.0 * efficiency_multiplier
+        pet.mood = min(100.0, pet.mood + gain)
         pet.save()
 
         return Response(
@@ -788,8 +794,14 @@ class ActiveTamagotchiViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
+        # Efficiency calculation
+        efficiency_multiplier = 1.0
+        if pet.mood < 60:
+            efficiency_multiplier = 0.5  # 50% efficiency if unhappy
+
         pet.last_pet_time = now
-        pet.mood = min(100.0, pet.mood + 2.0)
+        gain = 2.0 * efficiency_multiplier
+        pet.mood = min(100.0, pet.mood + gain)
         pet.save()
 
         return Response(
