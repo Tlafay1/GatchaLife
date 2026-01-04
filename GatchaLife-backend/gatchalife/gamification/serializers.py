@@ -200,6 +200,7 @@ class UserCardSerializer(serializers.ModelSerializer):
 class ActiveTamagotchiSerializer(serializers.ModelSerializer):
     character_id = serializers.IntegerField()
     character_image = serializers.SerializerMethodField()
+    is_sleeping = serializers.SerializerMethodField()
     character_name = serializers.CharField(source="character.name", read_only=True)
 
     class Meta:
@@ -217,27 +218,24 @@ class ActiveTamagotchiSerializer(serializers.ModelSerializer):
             "character_id",
             "character_image",
             "character_name",
+            "is_sleeping",
         ]
         read_only_fields = ["last_decay_update", "name"]
 
-    def get_character_image(self, obj):
-        from .models import CompanionImage, CompanionState
+    def get_is_sleeping(self, obj):
         from django.utils import timezone
 
-        # Determine current state
-        now_hour = timezone.now().hour
-        current_state = CompanionState.NEUTRAL
-
-        # Check Sleep
-        is_sleeping = False
+        now_hour = timezone.localtime().hour
         if obj.sleep_start_hour > obj.sleep_end_hour:
-            if now_hour >= obj.sleep_start_hour or now_hour < obj.sleep_end_hour:
-                is_sleeping = True
+            return now_hour >= obj.sleep_start_hour or now_hour < obj.sleep_end_hour
         else:
-            if obj.sleep_start_hour <= now_hour < obj.sleep_end_hour:
-                is_sleeping = True
+            return obj.sleep_start_hour <= now_hour < obj.sleep_end_hour
 
-        if is_sleeping:
+    def get_character_image(self, obj):
+        from .models import CompanionImage, CompanionState
+
+        # Determine current state
+        if self.get_is_sleeping(obj):
             current_state = CompanionState.SLEEPING
         else:
             # Map mood to state

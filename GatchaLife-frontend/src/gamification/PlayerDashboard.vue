@@ -219,16 +219,19 @@ const getDifficultyColor = (difficulty: string) => {
               <!-- Character Aura/Glow based on Mood -->
               <div
                 class="absolute inset-0 flex items-center justify-center pointer-events-none transition-opacity duration-1000"
-                :class="tamagotchi.mood > 50 ? 'opacity-100' : 'opacity-20'">
-                <div class="w-[300px] h-[300px] bg-pink-500/20 rounded-full blur-[100px] animate-pulse"></div>
+                :class="tamagotchi.is_sleeping ? 'opacity-40' : (tamagotchi.mood > 50 ? 'opacity-100' : 'opacity-20')">
+                <div class="w-[300px] h-[300px] bg-pink-500/20 rounded-full blur-[100px]"
+                  :class="{ 'animate-pulse': !tamagotchi.is_sleeping }"></div>
               </div>
 
               <!-- Main Character Image (Dynamic Sizing) -->
               <div
                 class="relative flex items-center justify-center h-[350px] sm:h-[480px] w-full transition-all duration-500 z-10 group-hover/spotlight:scale-105">
                 <img v-if="tamagotchi.character_image" :src="tamagotchi.character_image"
-                  class="h-full w-auto object-contain max-w-full drop-shadow-[0_0_25px_rgba(0,0,0,0.5)] animate-in fade-in zoom-in-95 duration-1000 select-none pointer-events-none filter"
-                  :class="tamagotchi.mood === 0 ? 'grayscale brightness-50 contrast-125' : ''"
+                  class="h-full w-auto object-contain max-w-full drop-shadow-[0_0_25px_rgba(0,0,0,0.5)] animate-in fade-in zoom-in-95 duration-1000 select-none pointer-events-none filter transition-all duration-1000"
+                  :class="[
+                    tamagotchi.mood === 0 ? 'grayscale brightness-50 contrast-125' : ''
+                  ]"
                   alt="My Companion" />
                 <div v-else class="text-9xl animate-bounce filter drop-shadow-2xl grayscale opacity-50">🐣</div>
               </div>
@@ -265,8 +268,10 @@ const getDifficultyColor = (difficulty: string) => {
                 <div
                   class="bg-black/60 backdrop-blur-xl border border-white/10 px-8 py-3 rounded-full shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] flex items-center gap-3">
                   <span class="w-2 h-2 rounded-full animate-pulse"
-                    :class="tamagotchi.mood > 50 ? 'bg-emerald-400' : (tamagotchi.mood > 20 ? 'bg-yellow-400' : 'bg-red-500')"></span>
+                    :class="tamagotchi.is_sleeping ? 'bg-indigo-400' : (tamagotchi.mood > 50 ? 'bg-emerald-400' : (tamagotchi.mood > 20 ? 'bg-yellow-400' : 'bg-red-500'))"></span>
                   <span class="font-black text-white tracking-wide text-xl">{{ tamagotchi.name }}</span>
+                  <span v-if="tamagotchi.is_sleeping"
+                    class="text-[10px] font-bold text-indigo-400 uppercase tracking-widest ml-1 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">Sleeping</span>
                 </div>
               </div>
             </div>

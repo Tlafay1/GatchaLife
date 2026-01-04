@@ -27,8 +27,8 @@ def update_tamagotchi_stats():
     # I'll implement logic that checks the hour of `now` (UTC) against the user's window constants.
     # NOTE: This assumes user sets window in UTC or we just use server time.
     # For Phase 1, we'll just use the hour from `now`.
-    
-    current_hour = now.hour
+
+    current_hour = timezone.localtime().hour
 
     for pet in active_pets:
         # Check sleep window
