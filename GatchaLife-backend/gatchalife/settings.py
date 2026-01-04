@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
+import structlog
 
 # Build paths inside the project like this: BASE_DIR / "subdir".
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -54,8 +55,6 @@ INSTALLED_APPS = [
     "gatchalife.ticktick",
     "gatchalife.workflow_engine",
 ]
-
-import structlog
 
 # ... (existing imports)
 
@@ -244,3 +243,13 @@ CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
+
+# Celery Beat Schedule
+from celery.schedules import crontab
+
+CELERY_BEAT_SCHEDULE = {
+    "decay-tamagotchi-mood-every-10-min": {
+        "task": "gatchalife.gamification.tasks.update_tamagotchi_stats",
+        "schedule": crontab(minute="*/10"),
+    },
+}

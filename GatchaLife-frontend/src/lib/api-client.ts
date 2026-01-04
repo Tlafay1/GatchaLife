@@ -522,6 +522,159 @@ export const useManualTask = () => {
       queryClient.invalidateQueries({ queryKey: ['player'] });
       queryClient.invalidateQueries({ queryKey: ['ticktick-stats'] });
       queryClient.invalidateQueries({ queryKey: ['ticktick-history'] });
+      queryClient.invalidateQueries({ queryKey: ['tamagotchi'] });
     },
   });
+};
+
+export const useTamagotchi = () => useQuery({
+  queryKey: ['tamagotchi'],
+  queryFn: async () => {
+    const response = await fetch(`${OpenAPI.BASE}/gamification/tamagotchi/`);
+    if (!response.ok) throw new Error('Failed to fetch tamagotchi');
+    const data = await response.json();
+    return Array.isArray(data) ? (data.length > 0 ? data[0] : null) : data;
+  },
+});
+
+export const useCreateTamagotchi = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { character_id: number }) => {
+      const response = await fetch(`${OpenAPI.BASE}/gamification/tamagotchi/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error('Failed to create tamagotchi');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tamagotchi'] });
+    },
+  });
+};
+
+export const useCharacters = () => useQuery({
+  queryKey: ['characters'],
+  queryFn: async () => {
+    // Assuming /characters/ endpoint exists and returns list
+    const response = await fetch(`${OpenAPI.BASE}/characters/`);
+    if (!response.ok) throw new Error('Failed to fetch characters');
+    return response.json();
+  },
+});
+
+export const useUpdateTamagotchi = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...data }: { id: number, name?: string, sleep_start_hour?: number, sleep_end_hour?: number }) => {
+      const response = await fetch(`${OpenAPI.BASE}/gamification/tamagotchi/${id}/`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error('Failed to update tamagotchi');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tamagotchi'] });
+    },
+  });
+};
+
+export const useCompanionImages = (characterId?: number) => useQuery({
+  queryKey: ['companion-images', characterId],
+  queryFn: async () => {
+    if (!characterId) return [];
+    const response = await fetch(`${OpenAPI.BASE}/gamification/companion-images/?character=${characterId}`);
+    if (!response.ok) throw new Error('Failed to fetch companion images');
+    return response.json();
+  },
+  enabled: !!characterId,
+});
+
+export const useUploadCompanionImage = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: FormData) => {
+      const response = await fetch(`${OpenAPI.BASE}/gamification/companion-images/`, {
+        method: 'POST',
+        // No Content-Type header - fetch sets it automatically with boundary for FormData
+        body: data,
+      });
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || 'Failed to upload image');
+      }
+      return response.json();
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['companion-images'] });
+      // Also invalidate tamagotchi to refresh current face if applicable
+      queryClient.invalidateQueries({ queryKey: ['tamagotchi'] });
+    }
+  });
+};
+
+export const useDeleteCompanionImage = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (imageId: number) => {
+      const response = await fetch(`${OpenAPI.BASE}/gamification/companion-images/${imageId}/`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || 'Failed to delete image');
+      }
+      return true;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['companion-images'] });
+      queryClient.invalidateQueries({ queryKey: ['tamagotchi'] });
+    },
+  });
+};
+
+export const useTamagotchiActions = () => {
+  const queryClient = useQueryClient();
+
+  const feed = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await fetch(`${OpenAPI.BASE}/gamification/tamagotchi/${id}/feed/`, { method: 'POST' });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.detail || 'Failed to feed');
+      }
+      return response.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tamagotchi'] })
+  });
+
+  const pet = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await fetch(`${OpenAPI.BASE}/gamification/tamagotchi/${id}/pet/`, { method: 'POST' });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.detail || 'Failed to pet');
+      }
+      return response.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tamagotchi'] })
+  });
+
+  const resurrect = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await fetch(`${OpenAPI.BASE}/gamification/tamagotchi/${id}/resurrect/`, { method: 'POST' });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.detail || 'Failed to resurrect');
+      }
+      return response.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tamagotchi'] })
+  });
+
+  return { feed, pet, resurrect };
 };

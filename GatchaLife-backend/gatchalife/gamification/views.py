@@ -1,9 +1,14 @@
-from rest_framework import viewsets, status, permissions
+from rest_framework import viewsets, status, permissions, serializers
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.contrib.auth.models import User
-from .models import Player, PlayerQuest, Card, UserCard
-from .serializers import PlayerSerializer, PlayerQuestSerializer, UserCardSerializer
+from .models import Player, PlayerQuest, Card, UserCard, ActiveTamagotchi
+from .serializers import (
+    PlayerSerializer,
+    PlayerQuestSerializer,
+    UserCardSerializer,
+    ActiveTamagotchiSerializer,
+)
 from gatchalife.character.models import CharacterVariant
 from gatchalife.style.models import Rarity, Style, Theme
 import random
@@ -627,3 +632,229 @@ class GatchaViewSet(viewsets.ViewSet):
                 "remaining_coins": player.gatcha_coins,
             }
         )
+
+class ActiveTamagotchiViewSet(viewsets.ModelViewSet):
+    serializer_class = ActiveTamagotchiSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def get_queryset(self):
+        player = get_default_player()
+        return ActiveTamagotchi.objects.filter(player=player)
+
+    def perform_create(self, serializer):
+        player = get_default_player()
+        if ActiveTamagotchi.objects.filter(player=player).exists():
+            raise serializers.ValidationError("You already have an active companion.")
+
+        character_id = serializer.validated_data.pop("character_id")
+        from gatchalife.character.models import Character
+
+        try:
+            character = Character.objects.get(id=character_id)
+        except Character.DoesNotExist:
+            raise serializers.ValidationError("Character not found.")
+
+        serializer.save(player=player, character=character, name=character.name)
+
+    @action(detail=True, methods=["post"])
+    def feed(self, request, pk=None):
+        pet = self.get_object()
+        # self._check_daily_reset(pet) # Quotas removed, daily reset not needed for feeding logic anymore
+
+        # Check behavioral matrix
+        if pet.mood <= 20 and pet.mood > 0:
+            return Response(
+                {"detail": "I'm too distressed to eat..."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if pet.mood == 0:
+            return Response(
+                {"detail": "Your companion is gone... (Status: Dead)"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if pet.mood > 0 and self._is_sleeping(pet):
+            return Response(
+                {"detail": "Zzz... (Sleeping)"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Check Time Windows
+        # Window 1: Sleep End -> 12 (Breakfast)
+        # Window 2: 12 -> 18 (Lunch)
+        # Window 3: 18 -> Sleep Start (Dinner)
+
+        from django.utils import timezone
+
+        now = timezone.now()
+        current_hour = now.hour
+
+        # Determine strict window boundaries regardless of day wrap for simplicity first
+        # Assuming sleep_end < 12 < 18 < sleep_start for standard day
+        # If sleep schedule is weird, this logic needs to be robust.
+        # Let's assume standard day first: 7am wake, 11pm sleep.
+
+        window_name = None
+
+        if pet.sleep_end_hour <= current_hour < 12:
+            window_name = "Breakfast"
+        elif 12 <= current_hour < 18:
+            window_name = "Lunch"
+        elif 18 <= current_hour < pet.sleep_start_hour:
+            window_name = "Dinner"
+        else:
+            # Likely sleeping or outside feeding hours (should be caught by is_sleeping but just in case)
+            # If sleep start is early (e.g. 20), 18-20 is dinner.
+            # If sleep start is late (e.g. 1am), 18-23 is dinner, 23-1 is sleep.
+            pass
+
+        if not window_name:
+            if self._is_sleeping(pet):
+                return Response(
+                    {"detail": "I'm sleeping..."}, status=status.HTTP_400_BAD_REQUEST
+                )
+            return Response(
+                {"detail": "Not hungry right now."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Check if already fed in this window TODAY
+        if pet.last_feed_time:
+            last_feed_local = timezone.localtime(pet.last_feed_time)
+            now_local = timezone.localtime(now)
+
+            # If fed today
+            if last_feed_local.date() == now_local.date():
+                last_hour = last_feed_local.hour
+
+                already_fed = False
+                if window_name == "Breakfast":
+                    if pet.sleep_end_hour <= last_hour < 12:
+                        already_fed = True
+                elif window_name == "Lunch":
+                    if 12 <= last_hour < 18:
+                        already_fed = True
+                elif window_name == "Dinner":
+                    # Handle if sleep start is next day? No, simplified.
+                    if 18 <= last_hour < pet.sleep_start_hour:
+                        already_fed = True
+
+                if already_fed:
+                    return Response(
+                        {"detail": f"I already had {window_name}!"},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+        # Apply effect
+        pet.last_feed_time = now
+        pet.mood = min(100.0, pet.mood + 5.0)
+        pet.save()
+
+        return Response(
+            {
+                "detail": f"Yummy! ({window_name})",
+                "mood": pet.mood,
+                "last_feed_time": pet.last_feed_time,
+                "last_pet_time": pet.last_pet_time,
+            }
+        )
+
+    @action(detail=True, methods=["post"])
+    def pet(self, request, pk=None):
+        pet = self.get_object()
+        # self._check_daily_reset(pet)
+
+        if pet.mood <= 40 and pet.mood > 0:
+            return Response(
+                {"detail": "Don't touch me right now."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if pet.mood == 0:
+            return Response({"detail": "..."}, status=status.HTTP_400_BAD_REQUEST)
+        if self._is_sleeping(pet):
+            return Response({"detail": "Zzz..."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check 5h Cooldown
+        from django.utils import timezone
+        import datetime
+
+        now = timezone.now()
+
+        if pet.last_pet_time:
+            diff = now - pet.last_pet_time
+            if diff < datetime.timedelta(hours=5):
+                remaining = datetime.timedelta(hours=5) - diff
+                hours, remainder = divmod(remaining.seconds, 3600)
+                minutes = remainder // 60
+                return Response(
+                    {"detail": f"Give me some space... ({hours}h {minutes}m)"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        pet.last_pet_time = now
+        pet.mood = min(100.0, pet.mood + 2.0)
+        pet.save()
+
+        return Response(
+            {
+                "detail": "*Purr*",
+                "mood": pet.mood,
+                "last_feed_time": pet.last_feed_time,
+                "last_pet_time": pet.last_pet_time,
+            }
+        )
+
+    @action(detail=True, methods=["post"])
+    def resurrect(self, request, pk=None):
+        pet = self.get_object()
+        if pet.mood > 0:
+            return Response(
+                {"detail": "I'm not dead yet!"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        player = pet.player
+        cost = 1000
+        if player.gatcha_coins < cost:
+            return Response(
+                {"detail": f"Need {cost} coins to resurrect."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        player.gatcha_coins -= cost
+        player.save()
+
+        pet.mood = 20.0  # Reset to Distressed
+        pet.last_feed_time = None
+        pet.last_pet_time = None
+        pet.save()
+
+        return Response({"detail": "It's a miracle!"})
+
+    # Daily reset logic no longer needed for quotas, but keeping method if needed later or removing reference
+    # Removing _check_daily_reset usage from above.
+
+    def _is_sleeping(self, pet):
+        from django.utils import timezone
+
+        now = timezone.now()
+        current_hour = now.hour
+        if pet.sleep_start_hour > pet.sleep_end_hour:
+            if (
+                current_hour >= pet.sleep_start_hour
+                or current_hour < pet.sleep_end_hour
+            ):
+                return True
+        else:
+            if pet.sleep_start_hour <= current_hour < pet.sleep_end_hour:
+                return True
+        return False
+
+
+from .models import CompanionImage
+from .serializers import CompanionImageSerializer
+from django_filters.rest_framework import DjangoFilterBackend
+
+
+class CompanionImageViewSet(viewsets.ModelViewSet):
+    queryset = CompanionImage.objects.all()
+    serializer_class = CompanionImageSerializer
+    permission_classes = [permissions.AllowAny]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ["character", "state"]

@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
-from gatchalife.character.models import CharacterVariant
+import django.utils.timezone
+from gatchalife.character.models import Character
 from gatchalife.style.models import Rarity, Style, Theme
 
 class Player(models.Model):
@@ -42,7 +43,9 @@ class PlayerQuest(models.Model):
         return f"{self.player.user.username} - {self.quest.title}"
 
 class Card(models.Model):
-    character_variant = models.ForeignKey(CharacterVariant, on_delete=models.CASCADE)
+    character_variant = models.ForeignKey(
+        "character.CharacterVariant", on_delete=models.CASCADE
+    )
     rarity = models.ForeignKey(Rarity, on_delete=models.CASCADE)
     style = models.ForeignKey(Style, on_delete=models.CASCADE)
     theme = models.ForeignKey(Theme, on_delete=models.CASCADE)
@@ -65,3 +68,62 @@ class UserCard(models.Model):
 
     def __str__(self):
         return f"{self.player.user.username} - {self.card} (x{self.count})"
+
+class ActiveTamagotchi(models.Model):
+    player = models.OneToOneField(
+        Player, on_delete=models.CASCADE, related_name="active_tamagotchi"
+    )
+    character = models.ForeignKey(
+        Character, on_delete=models.CASCADE, null=True, blank=True
+    )
+    name = models.CharField(max_length=255, blank=True)
+    mood = models.FloatField(default=100.0)
+    # satiety removed - merged into mood
+
+    # Interaction Limits
+    # Interaction Tracking
+    last_feed_time = models.DateTimeField(null=True, blank=True)
+    last_pet_time = models.DateTimeField(null=True, blank=True)
+    last_daily_reset = models.DateTimeField(default=django.utils.timezone.now)
+
+    last_decay_update = models.DateTimeField(auto_now_add=True)
+
+    # Sleep window configuration (24h format)
+    sleep_start_hour = models.IntegerField(default=23)  # 11 PM
+    sleep_end_hour = models.IntegerField(default=7)  # 7 AM
+
+    def __str__(self):
+        return f"{self.name} ({self.player.user.username})"
+
+
+class CompanionState(models.TextChoices):
+    EXTREMELY_HAPPY = "EXTREMELY_HAPPY", "Extremely Happy (80-100%)"
+    HAPPY = "HAPPY", "Happy (60-80%)"
+    NEUTRAL = "NEUTRAL", "Neutral (40-60%)"
+    POUTING = "POUTING", "Pouting (20-40%)"
+    DISTRESSED = "DISTRESSED", "Very Distressed (1-20%)"
+    DEAD = "DEAD", "Dead (0%)"
+    SLEEPING = "SLEEPING", "Sleeping"
+
+
+class CompanionImage(models.Model):
+    """
+    Stores images for the companion in different states/moods.
+    """
+
+    character = models.ForeignKey(
+        Character, on_delete=models.CASCADE, related_name="companion_images"
+    )
+    image = models.ImageField(upload_to="companion_images/")
+
+    # Condition triggers
+    state = models.CharField(
+        max_length=20, choices=CompanionState.choices, default=CompanionState.NEUTRAL
+    )
+
+    class Meta:
+        # Ensure only one image per state per character
+        unique_together = ("character", "state")
+
+    def __str__(self):
+        return f"{self.character.name} - {self.get_state_display()}"

@@ -1,7 +1,21 @@
 from rest_framework import serializers
-from .models import Player, Quest, PlayerQuest, Card, UserCard
+from .models import (
+    Player,
+    Quest,
+    PlayerQuest,
+    Card,
+    UserCard,
+    ActiveTamagotchi,
+    CompanionImage,
+)
 # Removed unused imports
 from gatchalife.generated_image.services import match_card_configuration
+
+class CompanionImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CompanionImage
+        fields = ["id", "character", "image", "state"]
+
 
 class PlayerSerializer(serializers.ModelSerializer):
     class Meta:
@@ -182,3 +196,82 @@ class UserCardSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserCard
         fields = ['id', 'card', 'count', 'obtained_at']
+
+class ActiveTamagotchiSerializer(serializers.ModelSerializer):
+    character_id = serializers.IntegerField()
+    character_image = serializers.SerializerMethodField()
+    character_name = serializers.CharField(source="character.name", read_only=True)
+
+    class Meta:
+        model = ActiveTamagotchi
+        fields = [
+            "id",
+            "name",
+            "mood",
+            "last_feed_time",
+            "last_pet_time",
+            "last_daily_reset",
+            "last_decay_update",
+            "sleep_start_hour",
+            "sleep_end_hour",
+            "character_id",
+            "character_image",
+            "character_name",
+        ]
+        read_only_fields = ["last_decay_update", "name"]
+
+    def get_character_image(self, obj):
+        from .models import CompanionImage, CompanionState
+        from django.utils import timezone
+
+        # Determine current state
+        now_hour = timezone.now().hour
+        current_state = CompanionState.NEUTRAL
+
+        # Check Sleep
+        is_sleeping = False
+        if obj.sleep_start_hour > obj.sleep_end_hour:
+            if now_hour >= obj.sleep_start_hour or now_hour < obj.sleep_end_hour:
+                is_sleeping = True
+        else:
+            if obj.sleep_start_hour <= now_hour < obj.sleep_end_hour:
+                is_sleeping = True
+
+        if is_sleeping:
+            current_state = CompanionState.SLEEPING
+        else:
+            # Map mood to state
+            mood = obj.mood
+            if mood >= 80:
+                current_state = CompanionState.EXTREMELY_HAPPY
+            elif mood >= 60:
+                current_state = CompanionState.HAPPY
+            elif mood >= 40:
+                current_state = CompanionState.NEUTRAL
+            elif mood >= 20:
+                current_state = CompanionState.POUTING
+            elif mood > 0:
+                current_state = CompanionState.DISTRESSED
+            else:
+                current_state = CompanionState.DEAD
+
+        # Find image for state
+        mood_image = CompanionImage.objects.filter(
+            character=obj.character, state=current_state
+        ).first()
+
+        # If we have a mood image, use it
+        target_image = None
+        if mood_image:
+            target_image = mood_image.image
+        # Fallback to character face if no mood image (unless DEAD or generic fallback needed?)
+        elif obj.character and obj.character.identity_face_image:
+            target_image = obj.character.identity_face_image
+
+        if target_image:
+            request = self.context.get("request")
+            url = target_image.url
+            if request:
+                return request.build_absolute_uri(url)
+            return url
+        return None

@@ -122,6 +122,28 @@ def process_completed_task(task_id, title, raw_tags, user):
         tags=json.dumps(raw_tags),
     )
 
+    # --- TAMAGOTCHI HOOK ---
+    try:
+        from gatchalife.gamification.models import ActiveTamagotchi
+
+        # Try to get the user's active pet
+        # We use filter().first() to avoid crash if not exists
+        pet = ActiveTamagotchi.objects.filter(player=player).first()
+        if pet:
+            # Increase mood by 5, cap at 100
+            old_mood = pet.mood
+            pet.mood = min(100.0, pet.mood + 5.0)
+            pet.save()
+            logger.info(
+                "tamagotchi_mood_boost",
+                player=player.user.username,
+                old_mood=old_mood,
+                new_mood=pet.mood,
+            )
+    except Exception as e:
+        logger.error("tamagotchi_hook_failed", error=str(e))
+    # -----------------------
+
     return {
         "status": "success",
         "task_id": task_id,
