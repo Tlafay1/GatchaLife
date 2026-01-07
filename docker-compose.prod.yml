@@ -23,6 +23,16 @@ services:
       - static_volume:/app/staticfiles
       - media_volume:/app/static/images
 
+  redis:
+    image: redis:7-alpine
+    container_name: gatchalife-redis
+    restart: unless-stopped
+    networks:
+      - gatchalife-network
+    volumes:
+      - redis_data:/data
+
+
   frontend:
     build:
       context: ./GatchaLife-frontend
@@ -40,6 +50,48 @@ services:
     volumes:
       - media_volume:/usr/share/nginx/media
 
+  celery:
+    build:
+      context: ./GatchaLife-backend
+      dockerfile: Dockerfile
+    container_name: gatchalife-celery
+    command: celery -A gatchalife worker --loglevel=info
+    restart: unless-stopped
+    networks:
+      - gatchalife-network
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_DB=gatchalife
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - SECRET_KEY=${SECRET_KEY}
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis
+      - backend
+
+  celery-beat:
+    build:
+      context: ./GatchaLife-backend
+      dockerfile: Dockerfile
+    container_name: gatchalife-celery-beat
+    command: celery -A gatchalife beat --loglevel=info
+    restart: unless-stopped
+    networks:
+      - gatchalife-network
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_DB=gatchalife
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - SECRET_KEY=${SECRET_KEY}
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis
+      - backend
+
 networks:
   proxy-network:
     external: true
@@ -51,3 +103,4 @@ networks:
 volumes:
   static_volume:
   media_volume:
+  redis_data:
