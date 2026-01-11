@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GatchaLife - Glass Menagerie (Refined)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'mana-start': '#6366f1', // Indigo-500
+                        'mana-end': '#a855f7',   // Purple-500
+                    },
+                    fontFamily: {
+                        'sans': ['Nunito', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .glass-bg {
+            background: linear-gradient(135deg, #F3E8FF 0%, #E0F2FE 50%, #FAE8FF 100%);
+        }
+        .btn-bounce:active { transform: scale(0.95); }
+        .float-anim { animation: float 6s ease-in-out infinite; }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-12px); }
+        }
+        
+        /* Man.a Bar Glow */
+        .mana-glow {
+            box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);
+        }
+
+        /* XP Ring Logic (CSS Conic Gradient) */
+        .xp-ring {
+            background: conic-gradient(#FBBF24 75%, #f1f5f9 0);
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-8">
+
+    <!-- Device Frame -->
+    <div class="relative w-[375px] h-[812px] bg-white rounded-[3rem] shadow-2xl overflow-hidden border-[8px] border-slate-900 ring-4 ring-slate-200">
+        
+        <!-- Screen Content -->
+        <div class="h-full w-full glass-bg flex flex-col relative">
+            
+            <!-- Status Bar Placeholder -->
+            <div class="px-6 py-4 flex justify-between items-center text-slate-800 text-xs font-bold opacity-50">
+                <span>9:41</span>
+                <div class="flex gap-1">
+                    <div class="w-4 h-2.5 bg-slate-800 rounded-[1px]"></div>
+                    <div class="w-[2px] h-2.5 bg-slate-800/30 rounded-[1px]"></div>
+                </div>
+            </div>
+
+            <!-- Header: Level & Currency -->
+            <div class="px-6 pt-2 flex justify-between items-center z-10">
+                
+                <!-- Level Indicator (XP Ring) -->
+                <div class="relative w-14 h-14 flex items-center justify-center">
+                    <!-- Ring background handled by CSS class .xp-ring, or inline for dynamic preview -->
+                    <div class="absolute inset-0 xp-ring shadow-sm"></div>
+                    <!-- Inner White Circle -->
+                    <div class="absolute inset-1 bg-white rounded-full flex flex-col items-center justify-center shadow-inner">
+                        <span class="text-[8px] font-bold text-slate-400 uppercase tracking-wide leading-none">LVL</span>
+                        <span class="text-xl font-extrabold text-slate-700 leading-none">5</span>
+                    </div>
+                </div>
+
+                <!-- Currency Pill -->
+                <div class="bg-white/80 backdrop-blur-md px-4 py-2 rounded-full shadow-sm flex items-center gap-2 border border-white/50">
+                    <div class="w-5 h-5 bg-yellow-400 rounded-full flex items-center justify-center text-white text-[10px] shadow-sm">
+                        $
+                    </div>
+                    <span class="font-bold text-slate-600">1,240</span>
+                </div>
+            </div>
+
+            <!-- Main Character Stage -->
+            <div class="flex-1 flex flex-col items-center justify-center z-0 -mt-10">
+                
+                <!-- Halo -->
+                <div class="w-72 h-72 bg-gradient-to-b from-white/60 to-white/10 rounded-full flex items-center justify-center relative backdrop-blur-sm border border-white/20">
+                    <!-- Character -->
+                    <div class="text-[9rem] float-anim filter drop-shadow-xl cursor-pointer transition-transform duration-300 active:scale-95">
+                        🦊
+                    </div>
+                </div>
+
+                <!-- Mana Bar (Merged System) -->
+                <div class="mt-10 w-64 flex flex-col items-center gap-2">
+                    <div class="w-full bg-white/50 h-5 rounded-full p-1 backdrop-blur-md shadow-sm border border-white/40 flex items-center">
+                        <!-- Gradient Bar -->
+                        <div class="h-full w-[70%] rounded-full bg-gradient-to-r from-mana-start to-mana-end mana-glow relative overflow-hidden">
+                            <!-- Shine effect -->
+                            <div class="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-white/30 to-transparent"></div>
+                        </div>
+                    </div>
+                    <!-- Icon/Label below or integrated? User asked for illustrations/colors similar to mana. Lets add a Crystal Icon next to it or floating. -->
+                    <div class="flex items-center gap-2 text-indigo-400/80 text-xs font-bold tracking-widest uppercase">
+                        <span>✨ Mana</span>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Bottom Action -->
+            <div class="px-6 pb-10 z-10 w-full">
+                <!-- Main Contextual Button -->
+                <button class="group w-full bg-white hover:bg-slate-50 relative overflow-hidden text-slate-700 py-5 rounded-3xl shadow-xl border border-white/60 transition-all btn-bounce flex items-center justify-between px-6">
+                    
+                    <div class="flex flex-col items-start z-10">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Current Goal</span>
+                        <span class="font-extrabold text-lg">Daily Training</span>
+                    </div>
+
+                    <div class="h-10 w-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-500 group-hover:bg-indigo-500 group-hover:text-white transition-colors z-10">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                    </div>
+
+                    <!-- Subtle background decoration -->
+                    <div class="absolute right-0 top-0 h-full w-20 bg-gradient-to-l from-indigo-50 to-transparent opacity-50"></div>
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+</body>
+</html>
