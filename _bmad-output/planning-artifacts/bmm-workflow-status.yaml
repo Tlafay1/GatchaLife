@@ -17,7 +17,7 @@ workflow_status:
   - id: "product-brief"
     status: "skipped"
   - id: "prd"
-    status: "required"
+    status: "_bmad-output/planning-artifacts/prd.md"
   - id: "create-ux-design"
     status: "conditional"
   - id: "create-architecture"
